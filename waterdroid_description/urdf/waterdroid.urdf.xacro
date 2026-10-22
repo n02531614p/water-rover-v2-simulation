@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+<robot name="mobile_treatment_rover" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Base Footprint Ground Projection -->
+  <link name="base_footprint"/>
+
+  <joint name="base_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0.14" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================= 1. CHASSIS BODY (Deep Metallic Blue) ================= -->
+  <link name="base_link">
+    <visual>
+      <geometry><box size="0.70 0.48 0.20"/></geometry>
+    </visual>
+    <collision>
+      <geometry><box size="0.70 0.48 0.20"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="12.0"/>
+      <inertia ixx="0.25" ixy="0" ixz="0" iyy="0.55" iyz="0" izz="0.70"/>
+    </inertial>
+  </link>
+  <gazebo reference="base_link">
+    <visual><material><ambient>0.08 0.18 0.38 1</ambient><diffuse>0.1 0.25 0.55 1</diffuse></material></visual>
+  </gazebo>
+
+  <!-- ================= 2. POWER SUBSYSTEM (Solar & Battery) ================= -->
+  <link name="battery_pack">
+    <visual><geometry><box size="0.28 0.22 0.10"/></geometry></visual>
+  </link>
+  <joint name="battery_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="battery_pack"/>
+    <origin xyz="-0.15 0.0 -0.02" rpy="0 0 0"/>
+  </joint>
+  <gazebo reference="battery_pack">
+    <visual><material><ambient>0.15 0.15 0.15 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material></visual>
+  </gazebo>
+
+  <link name="solar_panel_left">
+    <visual><geometry><box size="0.32 0.20 0.02"/></geometry></visual>
+  </link>
+  <joint name="solar_left_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="solar_panel_left"/>
+    <origin xyz="-0.10 0.14 0.13" rpy="0.08 -0.05 0"/>
+  </joint>
+  <gazebo reference="solar_panel_left">
+    <visual><material><ambient>0.05 0.1 0.25 1</ambient><diffuse>0.05 0.15 0.4 1</diffuse></material></visual>
+  </gazebo>
+
+  <link name="solar_panel_right">
+    <visual><geometry><box size="0.32 0.20 0.02"/></geometry></visual>
+  </link>
+  <joint name="solar_right_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="solar_panel_right"/>
+    <origin xyz="-0.10 -0.14 0.13" rpy="-0.08 -0.05 0"/>
+  </joint>
+  <gazebo reference="solar_panel_right">
+    <visual><material><ambient>0.05 0.1 0.25 1</ambient><diffuse>0.05 0.15 0.4 1</diffuse></material></visual>
+  </gazebo>
+
+  <!-- ================= 3. WATER TREATMENT ASSEMBLIES ================= -->
+  <link name="water_tank">
+    <visual><geometry><cylinder radius="0.14" length="0.22"/></geometry></visual>
+  </link>
+  <joint name="tank_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="water_tank"/>
+    <origin xyz="0.08 0.0 0.20" rpy="0 0 0"/>
+  </joint>
+  <gazebo reference="water_tank">
+    <visual><material><ambient>0.0 0.7 0.85 0.85</ambient><diffuse>0.0 0.8 0.95 0.85</diffuse></material></visual>
+  </gazebo>
+
+  <!-- ================= 4. EXTENDABLE WATER DISPENSING ARM ================= -->
+  <!-- Base Turret Mounting Socket -->
+  <link name="arm_base_turret">
+    <visual><geometry><cylinder radius="0.05" length="0.08"/></geometry></visual>
+  </link>
+  <joint name="arm_base_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="arm_base_turret"/>
+    <origin xyz="0.30 0.0 0.12" rpy="0 0 0"/>
+  </joint>
+  <gazebo reference="arm_base_turret">
+    <visual><material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material></visual>
+  </gazebo>
+
+  <!-- Stage 1 Telescopic Extendable Cylinder -->
+  <link name="arm_stage_1">
+    <visual><geometry><cylinder radius="0.03" length="0.25"/></geometry></visual>
+    <inertial><mass value="0.2"/><inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/></inertial>
+  </link>
+  <joint name="arm_extension_joint" type="prismatic">
+    <parent link="arm_base_turret"/>
+    <child link="arm_stage_1"/>
+    <origin xyz="0.10 0.0 0.02" rpy="0 1.5708 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0.0" upper="0.30" effort="10.0" velocity="0.2"/>
+  </joint>
+  <gazebo reference="arm_stage_1">
+    <visual><material><ambient>0.8 0.8 0.8 1</ambient><diffuse>0.9 0.9 0.9 1</diffuse></material></visual>
+  </gazebo>
+
+  <!-- End-Effector Dispensing Nozzle -->
+  <link name="dispensing_nozzle">
+    <visual><geometry><cylinder radius="0.015" length="0.08"/></geometry></visual>
+  </link>
+  <joint name="nozzle_joint" type="fixed">
+    <parent link="arm_stage_1"/>
+    <child link="dispensing_nozzle"/>
+    <origin xyz="0.0 0.0 0.14" rpy="1.5708 0 0"/>
+  </joint>
+  <gazebo reference="dispensing_nozzle">
+    <visual><material><ambient>0.9 0.5 0.0 1</ambient><diffuse>1.0 0.6 0.0 1</diffuse></material></visual>
+  </gazebo>
+
+  <!-- ================= 5. OFF-ROAD DRIVE WHEELS ================= -->
+  <link name="left_wheel">
+    <visual><geometry><cylinder radius="0.11" length="0.06"/></geometry></visual>
+    <collision><geometry><cylinder radius="0.11" length="0.06"/></geometry></collision>
+    <inertial><mass value="0.8"/><inertia ixx="0.002" ixy="0" ixz="0" iyy="0.002" iyz="0" izz="0.002"/></inertial>
+  </link>
+  <joint name="left_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="left_wheel"/>
+    <origin xyz="-0.08 0.27 -0.03" rpy="-1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <link name="right_wheel">
+    <visual><geometry><cylinder radius="0.11" length="0.06"/></geometry></visual>
+    <collision><geometry><cylinder radius="0.11" length="0.06"/></geometry></collision>
+    <inertial><mass value="0.8"/><inertia ixx="0.002" ixy="0" ixz="0" iyy="0.002" iyz="0" izz="0.002"/></inertial>
+  </link>
+  <joint name="right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="right_wheel"/>
+    <origin xyz="-0.08 -0.27 -0.03" rpy="-1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <link name="caster_wheel">
+    <visual><geometry><sphere radius="0.08"/></geometry></visual>
+    <collision><geometry><sphere radius="0.08"/></geometry></collision>
+    <inertial><mass value="0.3"/><inertia ixx="0.0005" ixy="0" ixz="0" iyy="0.0005" iyz="0" izz="0.0005"/></inertial>
+  </link>
+  <joint name="caster_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="caster_wheel"/>
+    <origin xyz="0.24 0.0 -0.06" rpy="0 0 0"/>
+  </joint>
+  <gazebo reference="caster_wheel"><mu1>0.001</mu1><mu2>0.001</mu2></gazebo>
+
+  <!-- Differential Drive Plugin -->
+  <gazebo>
+    <plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive">
+      <left_joint>left_wheel_joint</left_joint>
+      <right_joint>right_wheel_joint</right_joint>
+      <wheel_separation>0.54</wheel_separation>
+      <wheel_radius>0.11</wheel_radius>
+      <topic>/cmd_vel</topic>
+      <odom_topic>/odom</odom_topic>
+      <frame_id>odom</frame_id>
+      <child_frame_id>base_footprint</child_frame_id>
+    </plugin>
+  </gazebo>
+
+</robot>

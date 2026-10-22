@@ -1,0 +1,134 @@
+<?xml version="1.0" ?>
+<sdf version="1.8">
+  <world name="water_project_world">
+
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <!-- Lighting & Sky -->
+    <scene>
+      <ambient>0.6 0.6 0.6 1.0</ambient>
+      <background>0.6 0.8 1.0 1.0</background>
+      <shadows>true</shadows>
+    </scene>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 15 0 0 0</pose>
+      <diffuse>1.0 0.95 0.8 1</diffuse>
+      <specular>0.3 0.3 0.3 1</specular>
+      <direction>-0.5 0.2 -0.8</direction>
+    </light>
+
+    <!-- Dirt / Grass Ground Plane -->
+    <model name="village_ground">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry>
+          <material>
+            <ambient>0.4 0.35 0.25 1</ambient>
+            <diffuse>0.5 0.42 0.3 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Treatment Docking Station (Origin 0,0) -->
+    <model name="treatment_dock">
+      <static>true</static>
+      <pose>0 0 0.25 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry><box><size>1.0 1.0 0.5</size></box></geometry>
+          <material>
+            <ambient>0.1 0.7 0.3 1</ambient>
+            <diffuse>0.1 0.7 0.3 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Village Water Well / Source (x = 7.0m) -->
+    <model name="water_source">
+      <static>true</static>
+      <pose>7.0 0 0.15 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry><cylinder><radius>0.8</radius><length>0.3</length></cylinder></geometry>
+          <material>
+            <ambient>0.0 0.4 0.85 1</ambient>
+            <diffuse>0.0 0.4 0.85 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Village Hut 1 -->
+    <model name="village_hut_1">
+      <static>true</static>
+      <pose>3.5 3.0 1.0 0 0 0</pose>
+      <link name="link">
+        <visual name="wall">
+          <geometry><cylinder><radius>1.2</radius><length>2.0</length></cylinder></geometry>
+          <material><ambient>0.6 0.4 0.2 1</ambient></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Village Hut 2 -->
+    <model name="village_hut_2">
+      <static>true</static>
+      <pose>4.0 -3.5 1.0 0 0 0</pose>
+      <link name="link">
+        <visual name="wall">
+          <geometry><cylinder><radius>1.2</radius><length>2.0</length></cylinder></geometry>
+          <material><ambient>0.6 0.4 0.2 1</ambient></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Trees & Foliage -->
+    <model name="tree_1">
+      <static>true</static>
+      <pose>1.5 2.5 1.2 0 0 0</pose>
+      <link name="link">
+        <visual name="trunk">
+          <geometry><cylinder><radius>0.15</radius><length>2.4</length></cylinder></geometry>
+          <material><ambient>0.3 0.2 0.1 1</ambient></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Random Rocks & Obstacles along the way (Testing Obstacle Avoidance) -->
+    <model name="rock_obstacle_1">
+      <static>true</static>
+      <pose>3.0 0.8 0.2 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><sphere><radius>0.25</radius></sphere></geometry></collision>
+        <visual name="vis">
+          <geometry><sphere><radius>0.25</radius></sphere></geometry>
+          <material><ambient>0.3 0.3 0.3 1</ambient></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="rock_obstacle_2">
+      <static>true</static>
+      <pose>5.2 -0.7 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><sphere><radius>0.3</radius></sphere></geometry></collision>
+        <visual name="vis">
+          <geometry><sphere><radius>0.3</radius></sphere></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient></material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
