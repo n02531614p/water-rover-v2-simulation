@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.ros.org/schema/package_format3.xsd"?>
+<package format="3">
+  <name>waterdroid_description</name>
+  <version>0.0.1</version>
+  <description>URDF description for Waterdroid</description>
+  <maintainer email="student@nust.ac.zw">student</maintainer>
+  <license>Apache License 2.0</license>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
