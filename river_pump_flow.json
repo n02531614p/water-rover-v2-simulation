@@ -1,0 +1,161 @@
+[
+    {
+        "id": "river_tank_tab",
+        "type": "tab",
+        "label": "River-to-Tank Water Harvester",
+        "disabled": false,
+        "info": "Automated river water collection with dry-run protection and hose flow monitoring."
+    },
+    {
+        "id": "sim_sensor_tick",
+        "type": "inject",
+        "z": "river_tank_tab",
+        "name": "Periodic Telemetry (5s)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.5,
+        "topic": "",
+        "payload": "{}",
+        "payloadType": "json",
+        "x": 150,
+        "y": 140,
+        "wires": [
+            [
+                "sim_sensor_data"
+            ]
+        ]
+    },
+    {
+        "id": "sim_sensor_data",
+        "type": "function",
+        "z": "river_tank_tab",
+        "name": "Simulated Hardware Sensors",
+        "func": "let tank = flow.get('sim_tank') ?? 15;\nlet riverOk = flow.get('sim_river') ?? true;\nlet pumpState = flow.get('pump_relay_state') ?? false;\n\nif (pumpState) {\n    tank = Math.min(100, tank + 2);\n} else {\n    tank = Math.max(10, tank - 0.2);\n}\nflow.set('sim_tank', tank);\n\nmsg.payload = {\n    tank_level_pct: Math.round(tank),\n    river_level_ok: riverOk,\n    hose_flow_rate_lpm: pumpState ? 18.5 : 0.0,\n    manual_mode: \"AUTO\"\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 140,
+        "wires": [
+            [
+                "river_pump_controller"
+            ]
+        ]
+    },
+    {
+        "id": "river_pump_controller",
+        "type": "function",
+        "z": "river_tank_tab",
+        "name": "Pump & Hose Controller Logic",
+        "func": "let state = context.get('state') || 'IDLE';\nlet pumpStartedAt = context.get('pumpStartedAt') || null;\nlet faultReason = context.get('faultReason') || null;\n\nconst TANK_START_PCT = 20;\nconst TANK_STOP_PCT  = 95;\nconst MAX_RUN_TIME_MS = 60 * 60 * 1000;\nconst FLOW_CHECK_DELAY_MS = 15 * 1000;\n\nconst data = msg.payload || {};\nconst tankLevel = Number(data.tank_level_pct ?? 50);\nconst riverOk   = Boolean(data.river_level_ok ?? true);\nconst flowRate  = Number(data.hose_flow_rate_lpm ?? 0);\nconst mode      = data.manual_mode || 'AUTO';\n\nif (data.reset_fault === true) {\n    state = 'IDLE';\n    faultReason = null;\n    pumpStartedAt = null;\n}\n\nlet pumpCmd = false;\n\nif (state === 'FAULT') {\n    pumpCmd = false;\n} else if (mode === 'MANUAL_OFF') {\n    state = 'IDLE';\n    pumpCmd = false;\n    pumpStartedAt = null;\n} else if (mode === 'MANUAL_ON') {\n    if (!riverOk) {\n        state = 'FAULT';\n        faultReason = 'River dry-run protection triggered.';\n        pumpCmd = false;\n    } else {\n        state = 'PUMPING';\n        pumpCmd = true;\n        if (!pumpStartedAt) pumpStartedAt = Date.now();\n    }\n} else {\n    if (!riverOk) {\n        if (state === 'PUMPING') {\n            state = 'FAULT';\n            faultReason = 'River water level dropped below suction intake.';\n        }\n        pumpCmd = false;\n        pumpStartedAt = null;\n    } else {\n        if (state === 'IDLE' && tankLevel <= TANK_START_PCT) {\n            state = 'PUMPING';\n            pumpStartedAt = Date.now();\n        } else if (state === 'PUMPING' && tankLevel >= TANK_STOP_PCT) {\n            state = 'IDLE';\n            pumpStartedAt = null;\n        }\n        pumpCmd = (state === 'PUMPING');\n    }\n}\n\nif (pumpCmd && pumpStartedAt) {\n    const elapsed = Date.now() - pumpStartedAt;\n    if (elapsed > FLOW_CHECK_DELAY_MS && flowRate < 1.0) {\n        state = 'FAULT';\n        faultReason = 'No water flow in hose after 15s. Check hose connection/pump prime!';\n        pumpCmd = false;\n        pumpStartedAt = null;\n    }\n    if (elapsed > MAX_RUN_TIME_MS) {\n        state = 'FAULT';\n        faultReason = 'Safety cutoff: Max continuous runtime exceeded.';\n        pumpCmd = false;\n        pumpStartedAt = null;\n    }\n}\n\ncontext.set('state', state);\ncontext.set('pumpStartedAt', pumpStartedAt);\ncontext.set('faultReason', faultReason);\nflow.set('pump_relay_state', pumpCmd);\n\nlet msgPump = {\n    payload: pumpCmd,\n    topic: \"river_system/actuator/pump_relay\"\n};\n\nlet msgStatus = {\n    payload: {\n        state: state,\n        pump_active: pumpCmd,\n        tank_level_pct: tankLevel,\n        river_water_ok: riverOk,\n        hose_flow_lpm: flowRate,\n        fault: faultReason,\n        run_seconds: pumpStartedAt ? Math.round((Date.now() - pumpStartedAt)/1000) : 0,\n        timestamp: new Date().toISOString()\n    },\n    topic: \"river_system/telemetry/status\"\n};\n\nreturn [msgPump, msgStatus];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 240,
+        "wires": [
+            [
+                "pump_relay_out"
+            ],
+            [
+                "status_debug"
+            ]
+        ]
+    },
+    {
+        "id": "pump_relay_out",
+        "type": "debug",
+        "z": "river_tank_tab",
+        "name": "Pump Relay Command",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload ? \"PUMP: ON\" : \"PUMP: OFF\"",
+        "statusType": "jsonata",
+        "x": 800,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "status_debug",
+        "type": "debug",
+        "z": "river_tank_tab",
+        "name": "System Telemetry & Alerts",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.state & (payload.fault ? \" - \" & payload.fault : \"\")",
+        "statusType": "jsonata",
+        "x": 810,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "manual_reset",
+        "type": "inject",
+        "z": "river_tank_tab",
+        "name": "Reset Fault",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"reset_fault\":true}",
+        "payloadType": "json",
+        "x": 170,
+        "y": 300,
+        "wires": [
+            [
+                "river_pump_controller"
+            ]
+        ]
+    },
+    {
+        "id": "manual_stop",
+        "type": "inject",
+        "z": "river_tank_tab",
+        "name": "Emergency Stop (Manual OFF)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"manual_mode\":\"MANUAL_OFF\"}",
+        "payloadType": "json",
+        "x": 230,
+        "y": 360,
+        "wires": [
+            [
+                "river_pump_controller"
+            ]
+        ]
+    }
+]
