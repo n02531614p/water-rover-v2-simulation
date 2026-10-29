@@ -1,0 +1,221 @@
+[
+    {
+        "id": "member9_tab",
+        "type": "tab",
+        "label": "Waterdroid - Member 9 Controller",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "json_parse",
+        "type": "json",
+        "z": "member9_tab",
+        "name": "Parse JSON",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 310,
+        "y": 120,
+        "wires": [
+            [
+                "extract_telemetry"
+            ]
+        ]
+    },
+    {
+        "id": "extract_telemetry",
+        "type": "function",
+        "z": "member9_tab",
+        "name": "Route Telemetry",
+        "func": "var stateMap = {0: 'IDLE', 1: 'NAV_RIVER', 2: 'INTAKE_DOSE', 3: 'NAV_HOMESTEAD', 4: 'DELIVER_WATER', 5: 'EMERGENCY_STOP'};\nvar state = msg.payload.state_id || 0;\n\nreturn [\n    { payload: stateMap[state] || 'UNKNOWN' },\n    { payload: msg.payload.battery_v || 0.0 }\n];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 510,
+        "y": 120,
+        "wires": [
+            [
+                "ui_state_disp"
+            ],
+            [
+                "ui_battery_disp"
+            ]
+        ]
+    },
+    {
+        "id": "ui_btn_start",
+        "type": "ui_button",
+        "z": "member9_tab",
+        "name": "Start Mission",
+        "group": "f460030dfecc0968",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "START MISSION",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "#28a745",
+        "className": "",
+        "icon": "",
+        "payload": "{\"cmd\":\"SET_STATE\",\"state\":1}",
+        "payloadType": "json",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 130,
+        "y": 240,
+        "wires": [
+            [
+                "serial_out"
+            ]
+        ]
+    },
+    {
+        "id": "ui_btn_estop",
+        "type": "ui_button",
+        "z": "member9_tab",
+        "name": "E-STOP",
+        "group": "f460030dfecc0968",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "EMERGENCY STOP",
+        "tooltip": "",
+        "color": "#ffffff",
+        "bgcolor": "#dc3545",
+        "className": "",
+        "icon": "",
+        "payload": "{\"cmd\":\"ESTOP\",\"state\":5}",
+        "payloadType": "json",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 120,
+        "y": 280,
+        "wires": [
+            [
+                "serial_out"
+            ]
+        ]
+    },
+    {
+        "id": "ui_state_disp",
+        "type": "ui_text",
+        "z": "member9_tab",
+        "group": "f460030dfecc0968",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "name": "Active State",
+        "label": "System State: ",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": "",
+        "color": "#000000",
+        "x": 730,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "ui_battery_disp",
+        "type": "ui_gauge",
+        "z": "member9_tab",
+        "name": "Battery Voltage",
+        "group": "f460030dfecc0968",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Battery Level",
+        "label": "Volts",
+        "format": "{{value}}V",
+        "min": 0,
+        "max": 6,
+        "colors": [
+            "#ca3838",
+            "#e6a23c",
+            "#52c41a"
+        ],
+        "seg1": "4.2",
+        "seg2": "4.8",
+        "diff": false,
+        "className": "",
+        "x": 740,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "serial_in",
+        "type": "serial in",
+        "z": "member9_tab",
+        "name": "ESP32 Telemetry",
+        "serial": "283d496f2c7f3795",
+        "x": 130,
+        "y": 120,
+        "wires": [
+            [
+                "json_parse"
+            ]
+        ]
+    },
+    {
+        "id": "serial_out",
+        "type": "serial out",
+        "z": "member9_tab",
+        "name": "ESP32 Command",
+        "serial": "esp32_port",
+        "x": 510,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "f460030dfecc0968",
+        "type": "ui_group",
+        "name": "Group 1",
+        "tab": "aa6898b20a381391",
+        "order": 1,
+        "disp": true,
+        "width": 6
+    },
+    {
+        "id": "283d496f2c7f3795",
+        "type": "serial-port",
+        "name": "",
+        "serialport": "COM6",
+        "serialbaud": "115200",
+        "databits": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "waitfor": "",
+        "dtr": "none",
+        "rts": "none",
+        "cts": "none",
+        "dsr": "none",
+        "newline": "\\n",
+        "bin": "false",
+        "out": "char",
+        "addchar": "",
+        "responsetimeout": 10000
+    },
+    {
+        "id": "aa6898b20a381391",
+        "type": "ui_tab",
+        "name": "Tab 1",
+        "icon": "dashboard",
+        "order": 1
+    },
+    {
+        "id": "508f552ea8dd899b",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-dashboard": "3.6.6",
+            "node-red-node-serialport": "2.0.3"
+        }
+    }
+]

@@ -3,14 +3,14 @@
 WorldInfo {
   basicTimeStep 16
 }
-
 Viewpoint {
-  orientation -0.20 0.25 0.95 2.0
-  position 2 -12 8
+  orientation 0.35987327790227563 0.3678344319523916 -0.8574316617212902 1.054653286616042
+  position -9.196077560209558 7.206736188168906 4.51983683562814
 }
-
 Background {
-  skyColor [ 0.4 0.7 1.0 ]
+  skyColor [
+    0.4 0.7 1
+  ]
 }
 DirectionalLight {
   ambientIntensity 0.5
@@ -18,190 +18,485 @@ DirectionalLight {
   intensity 1.2
   castShadows TRUE
 }
-
-# Ground Terrain with Collision
 Solid {
   children [
     Shape {
-      appearance PBRAppearance { baseColor 0.35 0.55 0.25 roughness 0.9 }
-      geometry Box { size 35 35 0.01 }
+      appearance PBRAppearance {
+        baseColor 0.35 0.55 0.25
+        roughness 0.9
+      }
+      geometry Box {
+        size 35 35 0.01
+      }
     }
   ]
-  boundingObject Box { size 35 35 0.01 }
   name "ground"
+  boundingObject Box {
+    size 35 35 0.01
+  }
 }
-
-# River Water Source
 Solid {
-  translation 10.0 0 0.05
+  translation 10 0 0.05
   children [
     Shape {
-      appearance PBRAppearance { baseColor 0.1 0.4 0.9 roughness 0.1 metalness 0.8 }
-      geometry Box { size 2 12 0.1 }
+      appearance PBRAppearance {
+        baseColor 0.1 0.4 0.9
+        roughness 0.1
+        metalness 0.8
+      }
+      geometry Box {
+        size 2 12 0.1
+      }
     }
   ]
   name "river_intake"
 }
-
-# Plant Base Station
 Solid {
   translation 0 0 0.02
   children [
     Shape {
-      appearance PBRAppearance { baseColor 0.2 0.7 0.3 roughness 0.5 }
-      geometry Box { size 1.5 1.5 0.02 }
+      appearance PBRAppearance {
+        baseColor 0.2 0.7 0.3
+        roughness 0.5
+      }
+      geometry Box {
+        size 1.5 1.5 0.02
+      }
     }
   ]
   name "water_plant"
 }
-
-# Homestead Huts
 Solid {
-  translation -5.0 3.0 0
+  translation -5 3 0
   children [
-    Transform { translation 0 0 0.4 children [ Shape { appearance PBRAppearance { baseColor 0.85 0.75 0.6 } geometry Cylinder { radius 0.7 height 0.8 } } ] }
-    Transform { translation 0 0 1.05 children [ Shape { appearance PBRAppearance { baseColor 0.5 0.35 0.15 } geometry Cone { bottomRadius 0.95 height 0.6 } } ] }
+    Pose {
+      translation 0 0 0.4
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.85 0.75 0.6
+          }
+          geometry Cylinder {
+            height 0.8
+            radius 0.7
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 1.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.5 0.35 0.15
+          }
+          geometry Cone {
+            bottomRadius 0.95
+            height 0.6
+          }
+        }
+      ]
+    }
   ]
   name "home_1"
 }
-
 Solid {
-  translation -5.0 -0.5 0
+  translation -5 -0.5 0
   children [
-    Transform { translation 0 0 0.4 children [ Shape { appearance PBRAppearance { baseColor 0.85 0.75 0.6 } geometry Cylinder { radius 0.7 height 0.8 } } ] }
-    Transform { translation 0 0 1.05 children [ Shape { appearance PBRAppearance { baseColor 0.5 0.35 0.15 } geometry Cone { bottomRadius 0.95 height 0.6 } } ] }
+    Pose {
+      translation 0 0 0.4
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.85 0.75 0.6
+          }
+          geometry Cylinder {
+            height 0.8
+            radius 0.7
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 1.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.5 0.35 0.15
+          }
+          geometry Cone {
+            bottomRadius 0.95
+            height 0.6
+          }
+        }
+      ]
+    }
   ]
   name "home_2"
 }
-
 Solid {
-  translation -5.0 -3.0 0
+  translation -5 -3 0
   children [
-    Transform { translation 0 0 0.4 children [ Shape { appearance PBRAppearance { baseColor 0.85 0.75 0.6 } geometry Cylinder { radius 0.7 height 0.8 } } ] }
-    Transform { translation 0 0 1.05 children [ Shape { appearance PBRAppearance { baseColor 0.5 0.35 0.15 } geometry Cone { bottomRadius 0.95 height 0.6 } } ] }
+    Pose {
+      translation 0 0 0.4
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.85 0.75 0.6
+          }
+          geometry Cylinder {
+            height 0.8
+            radius 0.7
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 1.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.5 0.35 0.15
+          }
+          geometry Cone {
+            bottomRadius 0.95
+            height 0.6
+          }
+        }
+      ]
+    }
   ]
   name "home_3"
 }
-
-# Side Trees
 Solid {
-  translation 2.0 7.0 0
+  translation 2 7 0
   children [
-    Transform { translation 0 0 0.75 children [ Shape { appearance PBRAppearance { baseColor 0.4 0.25 0.1 } geometry Cylinder { radius 0.18 height 1.5 } } ] }
-    Transform { translation 0 0 2.0 children [ Shape { appearance PBRAppearance { baseColor 0.15 0.45 0.15 } geometry Cone { bottomRadius 1.2 height 2.0 } } ] }
+    Pose {
+      translation 0 0 0.75
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.4 0.25 0.1
+          }
+          geometry Cylinder {
+            height 1.5
+            radius 0.18
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 2
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.15 0.45 0.15
+          }
+          geometry Cone {
+            bottomRadius 1.2
+          }
+        }
+      ]
+    }
   ]
   name "tree_left_1"
 }
-
 Solid {
-  translation 7.0 7.5 0
+  translation 7 7.5 0
   children [
-    Transform { translation 0 0 0.75 children [ Shape { appearance PBRAppearance { baseColor 0.4 0.25 0.1 } geometry Cylinder { radius 0.2 height 1.5 } } ] }
-    Transform { translation 0 0 2.2 children [ Shape { appearance PBRAppearance { baseColor 0.1 0.4 0.1 } geometry Cone { bottomRadius 1.4 height 2.2 } } ] }
+    Pose {
+      translation 0 0 0.75
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.4 0.25 0.1
+          }
+          geometry Cylinder {
+            height 1.5
+            radius 0.2
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 2.2
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.1 0.4 0.1
+          }
+          geometry Cone {
+            bottomRadius 1.4
+            height 2.2
+          }
+        }
+      ]
+    }
   ]
   name "tree_left_2"
 }
-
 Solid {
-  translation -3.0 7.2 0
+  translation -3 7.2 0
   children [
-    Transform { translation 0 0 0.6 children [ Shape { appearance PBRAppearance { baseColor 0.4 0.25 0.1 } geometry Cylinder { radius 0.15 height 1.2 } } ] }
-    Transform { translation 0 0 1.7 children [ Shape { appearance PBRAppearance { baseColor 0.2 0.5 0.2 } geometry Cone { bottomRadius 1.1 height 1.8 } } ] }
+    Pose {
+      translation 0 0 0.6
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.4 0.25 0.1
+          }
+          geometry Cylinder {
+            height 1.2
+            radius 0.15
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 1.7
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.2 0.5 0.2
+          }
+          geometry Cone {
+            bottomRadius 1.1
+            height 1.8
+          }
+        }
+      ]
+    }
   ]
   name "tree_left_3"
 }
-
 Solid {
-  translation 2.0 -7.0 0
+  translation 2 -7 0
   children [
-    Transform { translation 0 0 0.75 children [ Shape { appearance PBRAppearance { baseColor 0.4 0.25 0.1 } geometry Cylinder { radius 0.18 height 1.5 } } ] }
-    Transform { translation 0 0 2.0 children [ Shape { appearance PBRAppearance { baseColor 0.15 0.45 0.15 } geometry Cone { bottomRadius 1.2 height 2.0 } } ] }
+    Pose {
+      translation 0 0 0.75
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.4 0.25 0.1
+          }
+          geometry Cylinder {
+            height 1.5
+            radius 0.18
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0 2
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.15 0.45 0.15
+          }
+          geometry Cone {
+            bottomRadius 1.2
+          }
+        }
+      ]
+    }
   ]
   name "tree_right_1"
 }
-
-# Dynamic 4WD Robot with Compass and Clean Physics
 Robot {
-  translation 0 0 0.12
+  translation -0.3342247222411381 -0.2011473536680235 0.07476063599955012
+  rotation -6.369455574028842e-08 -1.752976929327403e-08 -0.999999999999998 -0.537135547416983
   children [
     Shape {
-      appearance PBRAppearance { baseColor 0.2 0.2 0.2 roughness 0.3 }
-      geometry Box { size 0.5 0.35 0.08 }
+      appearance PBRAppearance {
+        baseColor 0.2 0.2 0.2
+        roughness 0.3
+      }
+      geometry Box {
+        size 0.5 0.35 0.08
+      }
     }
-    Transform {
-      translation -0.05 0 0.10
+    Pose {
+      translation -0.05 0 0.1
       children [
         Shape {
-          appearance PBRAppearance { baseColor 0.1 0.6 1.0 roughness 0.1 transparency 0.2 }
-          geometry Cylinder { radius 0.12 height 0.14 }
+          appearance PBRAppearance {
+            baseColor 0.1 0.6 1
+            transparency 0.2
+            roughness 0.1
+          }
+          geometry Cylinder {
+            height 0.14
+            radius 0.12
+          }
         }
       ]
     }
     GPS {
-      name "gps"
     }
     Compass {
-      name "compass"
     }
-
-    # FRONT LEFT
     HingeJoint {
-      jointParameters HingeJointParameters { axis 0 1 0 anchor 0.15 0.20 0 }
-      device [ RotationalMotor { name "front_left_motor" } ]
+      jointParameters HingeJointParameters {
+        position 951.6644094626813
+        axis 0 1 0
+        anchor 0.15 0.2 0
+      }
+      device [
+        RotationalMotor {
+          name "front_left_motor"
+        }
+      ]
       endPoint Solid {
-        translation 0.15 0.20 0
-        rotation 1 0 0 1.5708
-        children [ Shape { appearance PBRAppearance { baseColor 0.9 0.4 0.0 } geometry Cylinder { radius 0.07 height 0.04 } } ]
-        boundingObject Cylinder { radius 0.07 height 0.04 }
-        physics Physics { mass 0.1 density -1 }
+        translation 0.15 0.2 0
+        rotation -0.0843031608655162 -0.7045882946687848 0.7045908827708577 3.3098006253563543
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.9 0.4 0
+            }
+            geometry Cylinder {
+              height 0.04
+              radius 0.07
+            }
+          }
+        ]
         name "front_left_wheel"
+        boundingObject Cylinder {
+          height 0.04
+          radius 0.07
+        }
+        physics Physics {
+          density -1
+          mass 0.1
+        }
+        linearVelocity 2.6324680750484258e-11 4.3723574994019156e-11 -1.41837537220453e-16
+        angularVelocity -1.7348005396880853e-12 6.225643846937717e-12 -1.3617596279174184e-12
       }
     }
-
-    # REAR LEFT
     HingeJoint {
-      jointParameters HingeJointParameters { axis 0 1 0 anchor -0.15 0.20 0 }
-      device [ RotationalMotor { name "left wheel motor" } ]
+      jointParameters HingeJointParameters {
+        position 951.6643390701026
+        axis 0 1 0
+        anchor -0.15 0.2 0
+      }
+      device [
+        RotationalMotor {
+          name "left wheel motor"
+        }
+      ]
       endPoint Solid {
-        translation -0.15 0.20 0
-        rotation 1 0 0 1.5708
-        children [ Shape { appearance PBRAppearance { baseColor 0.9 0.4 0.0 } geometry Cylinder { radius 0.07 height 0.04 } } ]
-        boundingObject Cylinder { radius 0.07 height 0.04 }
-        physics Physics { mass 0.1 density -1 }
+        translation -0.15 0.2 0
+        rotation -0.08432813612147938 -0.7045868003213647 0.7045893884179484 3.30985022309072
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.9 0.4 0
+            }
+            geometry Cylinder {
+              height 0.04
+              radius 0.07
+            }
+          }
+        ]
         name "rear_left_wheel"
+        boundingObject Cylinder {
+          height 0.04
+          radius 0.07
+        }
+        physics Physics {
+          density -1
+          mass 0.1
+        }
+        linearVelocity 3.865360027052723e-11 -3.845029049102654e-11 2.6712997798694877e-16
+        angularVelocity -4.143318944755242e-12 -2.837742951650388e-13 -1.35966409917427e-12
       }
     }
-
-    # FRONT RIGHT
     HingeJoint {
-      jointParameters HingeJointParameters { axis 0 1 0 anchor 0.15 -0.20 0 }
-      device [ RotationalMotor { name "front_right_motor" } ]
+      jointParameters HingeJointParameters {
+        position 1058.7550042432292
+        axis 0 1 0
+        anchor 0.15 -0.2 0
+      }
+      device [
+        RotationalMotor {
+          name "front_right_motor"
+        }
+      ]
       endPoint Solid {
-        translation 0.15 -0.20 0
-        rotation 1 0 0 1.5708
-        children [ Shape { appearance PBRAppearance { baseColor 0.9 0.4 0.0 } geometry Cylinder { radius 0.07 height 0.04 } } ]
-        boundingObject Cylinder { radius 0.07 height 0.04 }
-        physics Physics { mass 0.1 density -1 }
+        translation 0.15 -0.2 0
+        rotation -0.013534455928650102 0.707040715224546 -0.7070433123348794 3.168659813376191
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.9 0.4 0
+            }
+            geometry Cylinder {
+              height 0.04
+              radius 0.07
+            }
+          }
+        ]
         name "front_right_wheel"
+        boundingObject Cylinder {
+          height 0.04
+          radius 0.07
+        }
+        physics Physics {
+          density -1
+          mass 0.1
+        }
+        linearVelocity -3.8654031267943185e-11 3.84456140323295e-11 -3.5498000053802197e-16
+        angularVelocity 4.149293802540959e-12 2.854464323461893e-13 -1.362426388207596e-12
       }
     }
-
-    # REAR RIGHT
     HingeJoint {
-      jointParameters HingeJointParameters { axis 0 1 0 anchor -0.15 -0.20 0 }
-      device [ RotationalMotor { name "right wheel motor" } ]
+      jointParameters HingeJointParameters {
+        position 1058.754934411737
+        axis 0 1 0
+        anchor -0.15 -0.2 0
+      }
+      device [
+        RotationalMotor {
+          name "right wheel motor"
+        }
+      ]
       endPoint Solid {
-        translation -0.15 -0.20 0
-        rotation 1 0 0 1.5708
-        children [ Shape { appearance PBRAppearance { baseColor 0.9 0.4 0.0 } geometry Cylinder { radius 0.07 height 0.04 } } ]
-        boundingObject Cylinder { radius 0.07 height 0.04 }
-        physics Physics { mass 0.1 density -1 }
+        translation -0.15 -0.2 0
+        rotation -0.013509764465808207 0.7070409513349936 -0.707043548446194 3.168610439659696
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.9 0.4 0
+            }
+            geometry Cylinder {
+              height 0.04
+              radius 0.07
+            }
+          }
+        ]
         name "rear_right_wheel"
+        boundingObject Cylinder {
+          height 0.04
+          radius 0.07
+        }
+        physics Physics {
+          density -1
+          mass 0.1
+        }
+        linearVelocity -2.6324462867466706e-11 -4.371855852265861e-11 6.044317637281307e-16
+        angularVelocity 1.7233607843676499e-12 -6.232242678840071e-12 -1.3624095993517237e-12
       }
     }
   ]
-  boundingObject Box { size 0.5 0.35 0.08 }
-  physics Physics { mass 2.0 density -1 }
   name "waterdroid"
+  boundingObject Box {
+    size 0.5 0.35 0.08
+  }
+  physics Physics {
+    density -1
+    mass 2
+  }
   controller "waterdroid_controller"
+  linearVelocity 1.0306014532448018e-15 7.352945021518037e-16 1.9895196601282806e-16
+  angularVelocity 6.687398250806393e-16 -3.4569166799162304e-16 -1.3614404613004609e-12
 }
