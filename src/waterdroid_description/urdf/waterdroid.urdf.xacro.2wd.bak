@@ -1,0 +1,96 @@
+<?xml version="1.0"?>
+<robot name="waterdroid">
+
+  <link name="base_footprint"/>
+
+  <joint name="base_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0.10" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Wooden Main Chassis -->
+  <link name="base_link">
+    <visual>
+      <geometry><box size="0.65 0.40 0.02"/></geometry>
+      <material name="wood"><color rgba="0.82 0.62 0.42 1"/></material>
+    </visual>
+    <collision>
+      <geometry><box size="0.65 0.40 0.02"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="5.0"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.2" iyz="0" izz="0.2"/>
+    </inertial>
+  </link>
+
+  <!-- Tanks & Deck Components -->
+  <link name="raw_tank">
+    <visual><geometry><box size="0.18 0.18 0.15"/></geometry><material name="trans_blue"><color rgba="0.1 0.5 0.9 0.6"/></material></visual>
+  </link>
+  <joint name="raw_tank_joint" type="fixed"><parent link="base_link"/><child link="raw_tank"/><origin xyz="-0.18 0.09 0.085" rpy="0 0 0"/></joint>
+
+  <link name="filter_column">
+    <visual><geometry><cylinder radius="0.04" length="0.22"/></geometry><material name="filter_mat"><color rgba="0.9 0.9 0.9 0.8"/></material></visual>
+  </link>
+  <joint name="filter_joint" type="fixed"><parent link="base_link"/><child link="filter_column"/><origin xyz="0.0 0.09 0.12" rpy="0 0 0"/></joint>
+
+  <link name="clean_tank">
+    <visual><geometry><box size="0.18 0.18 0.15"/></geometry><material name="trans_clean"><color rgba="0.2 0.8 1.0 0.6"/></material></visual>
+  </link>
+  <joint name="clean_tank_joint" type="fixed"><parent link="base_link"/><child link="clean_tank"/><origin xyz="0.18 0.09 0.085" rpy="0 0 0"/></joint>
+
+  <!-- Front Frictionless Caster Wheel -->
+  <link name="front_caster">
+    <visual><geometry><sphere radius="0.05"/></geometry><material name="black"><color rgba="0.1 0.1 0.1 1"/></material></visual>
+    <collision><geometry><sphere radius="0.05"/></geometry></collision>
+    <inertial><mass value="0.2"/><origin xyz="0 0 0"/><inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/></inertial>
+  </link>
+  <joint name="front_caster_joint" type="fixed">
+    <parent link="base_link"/><child link="front_caster"/><origin xyz="0.22 0 -0.05" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Rear Drive Left Wheel -->
+  <link name="rear_left_wheel">
+    <visual><geometry><cylinder radius="0.10" length="0.06"/></geometry><material name="black"><color rgba="0.05 0.05 0.05 1"/></material></visual>
+    <collision><geometry><cylinder radius="0.10" length="0.06"/></geometry></collision>
+    <inertial><mass value="0.8"/><origin xyz="0 0 0"/><inertia ixx="0.002" ixy="0" ixz="0" iyy="0.002" iyz="0" izz="0.004"/></inertial>
+  </link>
+  <joint name="rear_left_wheel_joint" type="continuous">
+    <parent link="base_link"/><child link="rear_left_wheel"/><origin xyz="-0.15 0.22 0" rpy="-1.5708 0 0"/><axis xyz="0 0 1"/>
+  </joint>
+
+  <!-- Rear Drive Right Wheel -->
+  <link name="rear_right_wheel">
+    <visual><geometry><cylinder radius="0.10" length="0.06"/></geometry><material name="black"><color rgba="0.05 0.05 0.05 1"/></material></visual>
+    <collision><geometry><cylinder radius="0.10" length="0.06"/></geometry></collision>
+    <inertial><mass value="0.8"/><origin xyz="0 0 0"/><inertia ixx="0.002" ixy="0" ixz="0" iyy="0.002" iyz="0" izz="0.004"/></inertial>
+  </link>
+  <joint name="rear_right_wheel_joint" type="continuous">
+    <parent link="base_link"/><child link="rear_right_wheel"/><origin xyz="-0.15 -0.22 0" rpy="-1.5708 0 0"/><axis xyz="0 0 1"/>
+  </joint>
+
+  <!-- Surface Friction Settings for Caster & Drive Wheels -->
+  <gazebo reference="front_caster"><mu1>0.001</mu1><mu2>0.001</mu2></gazebo>
+  <gazebo reference="rear_left_wheel"><mu1>0.8</mu1><mu2>0.8</mu2></gazebo>
+  <gazebo reference="rear_right_wheel"><mu1>0.8</mu1><mu2>0.8</mu2></gazebo>
+
+  <gazebo>
+    <plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive">
+      <left_joint>rear_left_wheel_joint</left_joint>
+      <right_joint>rear_right_wheel_joint</right_joint>
+      <wheel_separation>0.44</wheel_separation>
+      <wheel_radius>0.10</wheel_radius>
+      <max_linear_acceleration>2.0</max_linear_acceleration>
+      <max_angular_acceleration>4.0</max_angular_acceleration>
+      <odom_publish_frequency>50</odom_publish_frequency>
+      <topic>cmd_vel</topic>
+      <odom_topic>odom</odom_topic>
+      <tf_topic>tf</tf_topic>
+      <frame_id>odom</frame_id>
+      <child_frame_id>base_footprint</child_frame_id>
+    </plugin>
+  </gazebo>
+
+</robot>

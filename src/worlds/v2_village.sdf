@@ -1,0 +1,156 @@
+<?xml version="1.0" ?>
+<sdf version="1.8">
+  <world name="v2_village">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 20 0 0 0</pose>
+      <diffuse>0.95 0.95 0.90 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.4 0.2 -0.9</direction>
+    </light>
+
+    <!-- Ground Plane -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="col"><geometry><plane><normal>0 0 1</normal><size>120 120</size></plane></geometry></collision>
+        <visual name="vis">
+          <geometry><plane><normal>0 0 1</normal><size>120 120</size></plane></geometry>
+          <material><ambient>0.25 0.5 0.25 1</ambient><diffuse>0.25 0.5 0.25 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Main Road Corridor -->
+    <model name="main_road">
+      <static>true</static>
+      <pose>4.0 0 0.001 0 0 0</pose>
+      <link name="link">
+        <visual name="vis">
+          <geometry><box><size>18.0 3.0 0.001</size></box></geometry>
+          <material><ambient>0.6 0.45 0.25 1</ambient><diffuse>0.6 0.45 0.25 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- RIVER WATER SOURCE (Centered at x=11.5, bank edge at x=10.0) -->
+    <model name="river_water_source">
+      <static>true</static>
+      <pose>11.5 0.0 0.005 0 0 0</pose>
+      <link name="link">
+        <visual name="water_vis">
+          <geometry><box><size>3.0 16.0 0.01</size></box></geometry>
+          <material><ambient>0.0 0.45 0.9 0.8</ambient><diffuse>0.0 0.45 0.9 0.8</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- HOMESTEAD 1 (North Side: x=6.0, y=6.5) -->
+    <model name="house_1_base">
+      <static>true</static>
+      <pose>6.0 6.5 0.8 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>3.0 3.0 1.6</size></box></geometry></collision>
+        <visual name="vis">
+          <geometry><box><size>3.0 3.0 1.6</size></box></geometry>
+          <material><ambient>0.8 0.75 0.65 1</ambient><diffuse>0.8 0.75 0.65 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="house_1_roof">
+      <static>true</static>
+      <pose>6.0 6.5 2.1 0 0 0</pose>
+      <link name="link">
+        <visual name="vis">
+          <geometry><cone><radius>2.4</radius><length>1.0</length></cone></geometry>
+          <material><ambient>0.5 0.35 0.2 1</ambient><diffuse>0.5 0.35 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="offload_bay_1">
+      <static>true</static>
+      <pose>6.0 3.0 0.01 0 0 0</pose>
+      <link name="link">
+        <visual name="vis">
+          <geometry><box><size>1.8 1.8 0.02</size></box></geometry>
+          <material><ambient>0.0 0.7 1.0 1</ambient><diffuse>0.0 0.7 1.0 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- HOMESTEAD 2 (South-West: x=6.0, y=-6.5) -->
+    <model name="house_2_base">
+      <static>true</static>
+      <pose>6.0 -6.5 0.8 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>3.0 3.0 1.6</size></box></geometry></collision>
+        <visual name="vis">
+          <geometry><box><size>3.0 3.0 1.6</size></box></geometry>
+          <material><ambient>0.8 0.75 0.65 1</ambient><diffuse>0.8 0.75 0.65 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="house_2_roof">
+      <static>true</static>
+      <pose>6.0 -6.5 2.1 0 0 0</pose>
+      <link name="link">
+        <visual name="vis">
+          <geometry><cone><radius>2.4</radius><length>1.0</length></cone></geometry>
+          <material><ambient>0.5 0.35 0.2 1</ambient><diffuse>0.5 0.35 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="offload_bay_2">
+      <static>true</static>
+      <pose>6.0 -3.0 0.01 0 0 0</pose>
+      <link name="link">
+        <visual name="vis">
+          <geometry><box><size>1.8 1.8 0.02</size></box></geometry>
+          <material><ambient>0.0 0.7 1.0 1</ambient><diffuse>0.0 0.7 1.0 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- HOMESTEAD 3 (Far-West South: x=-3.0, y=-6.5) -->
+    <model name="house_3_base">
+      <static>true</static>
+      <pose>-3.0 -6.5 0.8 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>3.0 3.0 1.6</size></box></geometry></collision>
+        <visual name="vis">
+          <geometry><box><size>3.0 3.0 1.6</size></box></geometry>
+          <material><ambient>0.8 0.75 0.65 1</ambient><diffuse>0.8 0.75 0.65 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="house_3_roof">
+      <static>true</static>
+      <pose>-3.0 -6.5 2.1 0 0 0</pose>
+      <link name="link">
+        <visual name="vis">
+          <geometry><cone><radius>2.4</radius><length>1.0</length></cone></geometry>
+          <material><ambient>0.5 0.35 0.2 1</ambient><diffuse>0.5 0.35 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="offload_bay_3">
+      <static>true</static>
+      <pose>-3.0 -3.0 0.01 0 0 0</pose>
+      <link name="link">
+        <visual name="vis">
+          <geometry><box><size>1.8 1.8 0.02</size></box></geometry>
+          <material><ambient>0.0 0.7 1.0 1</ambient><diffuse>0.0 0.7 1.0 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
