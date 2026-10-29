@@ -1,0 +1,347 @@
+[
+    {
+        "id": "tab_chem_dosing",
+        "type": "tab",
+        "label": "Chemical Dosing & Pre-treatment",
+        "disabled": false,
+        "info": "Automated precision chemical dosing system for Water Treatment.\n- Stage 1 Tank: Alum dosing (Coagulation/Flocculation)\n- Stage 3 Tank: Chlorine dosing (Disinfection)\nSupports both Volume-based and Timer-based triggers with precision runtime calculation and safety interlocks."
+    },
+    {
+        "id": "inject_timer_trigger",
+        "type": "inject",
+        "z": "tab_chem_dosing",
+        "name": "Timer Trigger (Every 10 mins)",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "600",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "trigger/timer",
+        "payload": "{\"trigger\":\"TIMER\",\"timestamp\":1730190000}",
+        "payloadType": "json",
+        "x": 170,
+        "y": 140,
+        "wires": [
+            [
+                "fn_dosing_controller"
+            ]
+        ]
+    },
+    {
+        "id": "inject_sim_stage1_vol",
+        "type": "inject",
+        "z": "tab_chem_dosing",
+        "name": "Simulate Stage 1 Inflow (+50 L)",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "water/stage1/inflow",
+        "payload": "{\"tank\":\"stage1\",\"volume_added_liters\":50,\"total_tank_volume\":200,\"turbidity_ntu\":45}",
+        "payloadType": "json",
+        "x": 190,
+        "y": 200,
+        "wires": [
+            [
+                "fn_dosing_controller"
+            ]
+        ]
+    },
+    {
+        "id": "inject_sim_stage3_vol",
+        "type": "inject",
+        "z": "tab_chem_dosing",
+        "name": "Simulate Stage 3 Inflow (+50 L)",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "water/stage3/inflow",
+        "payload": "{\"tank\":\"stage3\",\"volume_added_liters\":50,\"total_tank_volume\":180,\"chlorine_ppm\":0.1}",
+        "payloadType": "json",
+        "x": 190,
+        "y": 260,
+        "wires": [
+            [
+                "fn_dosing_controller"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt_in_telemetry",
+        "type": "mqtt in",
+        "z": "tab_chem_dosing",
+        "name": "MQTT Water Sensors / PLC",
+        "topic": "water/+/inflow",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "mqtt_broker_local",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 180,
+        "y": 320,
+        "wires": [
+            [
+                "fn_dosing_controller"
+            ]
+        ]
+    },
+    {
+        "id": "inject_estop",
+        "type": "inject",
+        "z": "tab_chem_dosing",
+        "name": "EMERGENCY STOP (Toggle)",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "safety/estop",
+        "payload": "true",
+        "payloadType": "bool",
+        "x": 180,
+        "y": 380,
+        "wires": [
+            [
+                "fn_dosing_controller"
+            ]
+        ]
+    },
+    {
+        "id": "fn_dosing_controller",
+        "type": "function",
+        "z": "tab_chem_dosing",
+        "name": "Chemical Dosing & Interlock Controller",
+        "func": "/**\n * Chemical Dosing & Pre-treatment Engine\n * Stage 1: Alum (Coagulation / Pre-treatment)\n * Stage 3: Chlorine (Disinfection / Post-treatment)\n * Supports Volume & Timer triggers with safe hardware limits.\n */\n\n// 1. Initialise / fetch persistent context settings\nlet config = flow.get('chem_config') || {\n    mode: 'HYBRID', // 'VOLUME_TRIGGER', 'TIMER_TRIGGER', or 'HYBRID'\n    stage1_alum: {\n        pump_rate_ml_sec: 1.5,       // Peristaltic pump rate (e.g. 90 mL/min = 1.5 mL/s)\n        ratio_ml_per_L: 0.06,        // 0.06 mL Alum per Liter water (~30-60 mg/L typical)\n        min_dose_threshold_L: 20,    // Trigger dose when at least 20L processed\n        fixed_timer_dose_ml: 5.0,    // Dose for pure timer trigger\n        max_single_dose_ml: 15.0,    // Safety ceiling per injection\n        current_stock_ml: 1000.0     // Reservoir level\n    },\n    stage3_chlorine: {\n        pump_rate_ml_sec: 0.8,       // Peristaltic pump rate (e.g. 48 mL/min = 0.8 mL/s)\n        ratio_ml_per_L: 0.005,       // 0.005 mL of 5% NaOCl per Liter (~2.5 ppm Cl2)\n        min_dose_threshold_L: 20,    // Trigger dose when at least 20L processed\n        fixed_timer_dose_ml: 2.0,    // Dose for pure timer trigger\n        max_single_dose_ml: 8.0,     // Safety ceiling per injection\n        current_stock_ml: 500.0      // Reservoir level\n    },\n    accumulated_vol: {\n        stage1: 0,\n        stage3: 0\n    },\n    emergency_stop: false\n};\n\nlet topic = msg.topic || '';\nlet payload = msg.payload || {};\n\n// Handle Emergency Stop\nif (topic === 'safety/estop') {\n    config.emergency_stop = !!payload;\n    flow.set('chem_config', config);\n    if (config.emergency_stop) {\n        node.status({ fill: 'red', shape: 'dot', text: 'E-STOP ACTIVE! All pumps halted' });\n        // Abort pumps immediately: Output 1 -> Alum off, Output 2 -> Chlorine off\n        return [\n            { topic: 'actuator/alum_pump/cmd', payload: 0, reason: 'ESTOP' },\n            { topic: 'actuator/chlorine_pump/cmd', payload: 0, reason: 'ESTOP' },\n            { topic: 'telemetry/dosing', payload: { status: 'ESTOP_ENGAGED' } }\n        ];\n    } else {\n        node.status({ fill: 'green', shape: 'ring', text: 'E-STOP Released. System Ready' });\n        return null;\n    }\n}\n\nif (config.emergency_stop) {\n    node.warn('Dosing rejected: Emergency stop active.');\n    return null;\n}\n\nlet alumTriggerMsg = null;\nlet chlorineTriggerMsg = null;\nlet telemetryMsg = null;\n\n// CASE A: Water Volume Inflow Trigger (Pulse/Flowmeter)\nif (topic.includes('stage1/inflow')) {\n    let addedLiters = parseFloat(payload.volume_added_liters || 0);\n    config.accumulated_vol.stage1 += addedLiters;\n    \n    // Check if accumulation reached dosing threshold\n    if (config.accumulated_vol.stage1 >= config.stage1_alum.min_dose_threshold_L) {\n        let targetLiters = config.accumulated_vol.stage1;\n        let calcDoseMl = targetLiters * config.stage1_alum.ratio_ml_per_L;\n        \n        // Apply safety clamp\n        calcDoseMl = Math.min(calcDoseMl, config.stage1_alum.max_single_dose_ml);\n        calcDoseMl = Math.round(calcDoseMl * 100) / 100;\n        \n        // Compute run time (ms)\n        let durationSec = calcDoseMl / config.stage1_alum.pump_rate_ml_sec;\n        let durationMs = Math.round(durationSec * 1000);\n        \n        // Deduct stock\n        config.stage1_alum.current_stock_ml -= calcDoseMl;\n        config.accumulated_vol.stage1 = 0; // Reset batch accumulator\n        \n        alumTriggerMsg = {\n            topic: 'actuator/alum_pump/run',\n            payload: {\n                target: 'Stage 1 (Coagulation/Pre-treatment)',\n                chemical: 'Alum (Aluminum Sulfate)',\n                trigger_mode: 'VOLUME',\n                water_processed_L: targetLiters,\n                dose_volume_ml: calcDoseMl,\n                duration_ms: durationMs,\n                pump_rate_ml_s: config.stage1_alum.pump_rate_ml_sec,\n                stock_remaining_ml: config.stage1_alum.current_stock_ml,\n                timestamp: new Date().toISOString()\n            }\n        };\n    }\n}\nelse if (topic.includes('stage3/inflow')) {\n    let addedLiters = parseFloat(payload.volume_added_liters || 0);\n    config.accumulated_vol.stage3 += addedLiters;\n    \n    if (config.accumulated_vol.stage3 >= config.stage3_chlorine.min_dose_threshold_L) {\n        let targetLiters = config.accumulated_vol.stage3;\n        let calcDoseMl = targetLiters * config.stage3_chlorine.ratio_ml_per_L;\n        \n        // Apply safety clamp\n        calcDoseMl = Math.min(calcDoseMl, config.stage3_chlorine.max_single_dose_ml);\n        calcDoseMl = Math.round(calcDoseMl * 100) / 100;\n        \n        // Compute run time (ms)\n        let durationSec = calcDoseMl / config.stage3_chlorine.pump_rate_ml_sec;\n        let durationMs = Math.round(durationSec * 1000);\n        \n        // Deduct stock\n        config.stage3_chlorine.current_stock_ml -= calcDoseMl;\n        config.accumulated_vol.stage3 = 0; // Reset batch accumulator\n        \n        chlorineTriggerMsg = {\n            topic: 'actuator/chlorine_pump/run',\n            payload: {\n                target: 'Stage 3 (Disinfection)',\n                chemical: 'Chlorine (Sodium Hypochlorite)',\n                trigger_mode: 'VOLUME',\n                water_processed_L: targetLiters,\n                dose_volume_ml: calcDoseMl,\n                duration_ms: durationMs,\n                pump_rate_ml_s: config.stage3_chlorine.pump_rate_ml_sec,\n                stock_remaining_ml: config.stage3_chlorine.current_stock_ml,\n                timestamp: new Date().toISOString()\n            }\n        };\n    }\n}\n// CASE B: Scheduled / Periodic Timer Trigger\nelse if (topic === 'trigger/timer') {\n    // Timer-based dosing runs fixed or adaptive dose for Stage 1 and Stage 3\n    let alumDose = config.stage1_alum.fixed_timer_dose_ml;\n    let alumDurationMs = Math.round((alumDose / config.stage1_alum.pump_rate_ml_sec) * 1000);\n    config.stage1_alum.current_stock_ml -= alumDose;\n    \n    alumTriggerMsg = {\n        topic: 'actuator/alum_pump/run',\n        payload: {\n            target: 'Stage 1 (Coagulation)',\n            chemical: 'Alum',\n            trigger_mode: 'TIMER',\n            dose_volume_ml: alumDose,\n            duration_ms: alumDurationMs,\n            stock_remaining_ml: config.stage1_alum.current_stock_ml,\n            timestamp: new Date().toISOString()\n        }\n    };\n    \n    let chlorineDose = config.stage3_chlorine.fixed_timer_dose_ml;\n    let chlorineDurationMs = Math.round((chlorineDose / config.stage3_chlorine.pump_rate_ml_sec) * 1000);\n    config.stage3_chlorine.current_stock_ml -= chlorineDose;\n    \n    chlorineTriggerMsg = {\n        topic: 'actuator/chlorine_pump/run',\n        payload: {\n            target: 'Stage 3 (Disinfection)',\n            chemical: 'Chlorine',\n            trigger_mode: 'TIMER',\n            dose_volume_ml: chlorineDose,\n            duration_ms: chlorineDurationMs,\n            stock_remaining_ml: config.stage3_chlorine.current_stock_ml,\n            timestamp: new Date().toISOString()\n        }\n    };\n}\n\n// Save updated state\nflow.set('chem_config', config);\n\n// Status update on node\nnode.status({\n    fill: 'green',\n    shape: 'dot',\n    text: `Stg1 Acc: ${config.accumulated_vol.stage1.toFixed(1)}L | Stg3 Acc: ${config.accumulated_vol.stage3.toFixed(1)}L`\n});\n\n// Compile telemetry\ntelemetryMsg = {\n    topic: 'telemetry/dosing',\n    payload: {\n        accumulated_vol: config.accumulated_vol,\n        alum_stock_ml: config.stage1_alum.current_stock_ml,\n        chlorine_stock_ml: config.stage3_chlorine.current_stock_ml,\n        estop: config.emergency_stop,\n        last_event: topic\n    }\n};\n\n// Outputs: [1: Alum Execution, 2: Chlorine Execution, 3: Telemetry/Dashboard]\nreturn [alumTriggerMsg, chlorineTriggerMsg, telemetryMsg];",
+        "outputs": 3,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 240,
+        "wires": [
+            [
+                "fn_alum_pulse_timer"
+            ],
+            [
+                "fn_chlorine_pulse_timer"
+            ],
+            [
+                "dbg_telemetry",
+                "mqtt_out_telemetry"
+            ]
+        ]
+    },
+    {
+        "id": "fn_alum_pulse_timer",
+        "type": "function",
+        "z": "tab_chem_dosing",
+        "name": "Stage 1 Alum Precision Dosing Driver",
+        "func": "/**\n * Stage 1 Alum Pump Pulse Controller\n * Precision Relay / GPIO control with exact hardware pulse cutoff.\n */\n\nlet cmd = msg.payload;\nlet activeTimer = context.get('alum_timer_id');\n\n// Handle forced abort or manual off\nif (cmd === 0 || (typeof cmd === 'object' && cmd.action === 'OFF')) {\n    if (activeTimer) {\n        clearTimeout(activeTimer);\n        context.set('alum_timer_id', null);\n    }\n    node.status({ fill: 'grey', shape: 'dot', text: 'Pump IDLE (Stopped)' });\n    return { topic: 'hardware/relay/stage1_alum', payload: 0, state: 'OFF' };\n}\n\nif (typeof cmd === 'object' && cmd.duration_ms > 0) {\n    let durationMs = cmd.duration_ms;\n    let doseMl = cmd.dose_volume_ml;\n    let triggerMode = cmd.trigger_mode;\n    \n    // Clear previous timer if still lingering\n    if (activeTimer) {\n        clearTimeout(activeTimer);\n    }\n    \n    node.status({\n        fill: 'blue',\n        shape: 'dot',\n        text: `Injecting ${doseMl} mL Alum (${(durationMs/1000).toFixed(1)}s via ${triggerMode})`\n    });\n    \n    // 1. Immediately turn Relay / Pump ON\n    node.send({ \n        topic: 'hardware/relay/stage1_alum',\n        payload: 1, \n        state: 'ON',\n        chemical: 'Alum',\n        dose_ml: doseMl,\n        duration_ms: durationMs \n    });\n    \n    // 2. Schedule precise non-blocking hardware cutoff\n    let timerId = setTimeout(() => {\n        node.status({ fill: 'green', shape: 'ring', text: `Dose complete (${doseMl} mL injected)` });\n        node.send({ \n            topic: 'hardware/relay/stage1_alum',\n            payload: 0, \n            state: 'OFF',\n            chemical: 'Alum',\n            completed_at: new Date().toISOString()\n        });\n        context.set('alum_timer_id', null);\n    }, durationMs);\n    \n    context.set('alum_timer_id', timerId);\n}\n\nreturn null;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 180,
+        "wires": [
+            [
+                "dbg_alum_out",
+                "mqtt_out_alum",
+                "gpio_out_alum"
+            ]
+        ]
+    },
+    {
+        "id": "fn_chlorine_pulse_timer",
+        "type": "function",
+        "z": "tab_chem_dosing",
+        "name": "Stage 3 Chlorine Precision Dosing Driver",
+        "func": "/**\n * Stage 3 Chlorine Pump Pulse Controller\n * Precision Relay / GPIO control with exact hardware pulse cutoff.\n */\n\nlet cmd = msg.payload;\nlet activeTimer = context.get('chlorine_timer_id');\n\n// Handle forced abort or manual off\nif (cmd === 0 || (typeof cmd === 'object' && cmd.action === 'OFF')) {\n    if (activeTimer) {\n        clearTimeout(activeTimer);\n        context.set('chlorine_timer_id', null);\n    }\n    node.status({ fill: 'grey', shape: 'dot', text: 'Pump IDLE (Stopped)' });\n    return { topic: 'hardware/relay/stage3_chlorine', payload: 0, state: 'OFF' };\n}\n\nif (typeof cmd === 'object' && cmd.duration_ms > 0) {\n    let durationMs = cmd.duration_ms;\n    let doseMl = cmd.dose_volume_ml;\n    let triggerMode = cmd.trigger_mode;\n    \n    // Clear previous timer if still lingering\n    if (activeTimer) {\n        clearTimeout(activeTimer);\n    }\n    \n    node.status({\n        fill: 'yellow',\n        shape: 'dot',\n        text: `Injecting ${doseMl} mL Chlorine (${(durationMs/1000).toFixed(1)}s via ${triggerMode})`\n    });\n    \n    // 1. Immediately turn Relay / Pump ON\n    node.send({ \n        topic: 'hardware/relay/stage3_chlorine',\n        payload: 1, \n        state: 'ON',\n        chemical: 'Chlorine',\n        dose_ml: doseMl,\n        duration_ms: durationMs \n    });\n    \n    // 2. Schedule precise non-blocking hardware cutoff\n    let timerId = setTimeout(() => {\n        node.status({ fill: 'green', shape: 'ring', text: `Dose complete (${doseMl} mL injected)` });\n        node.send({ \n            topic: 'hardware/relay/stage3_chlorine',\n            payload: 0, \n            state: 'OFF',\n            chemical: 'Chlorine',\n            completed_at: new Date().toISOString()\n        });\n        context.set('chlorine_timer_id', null);\n    }, durationMs);\n    \n    context.set('chlorine_timer_id', timerId);\n}\n\nreturn null;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 930,
+        "y": 280,
+        "wires": [
+            [
+                "dbg_chlorine_out",
+                "mqtt_out_chlorine",
+                "gpio_out_chlorine"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt_out_alum",
+        "type": "mqtt out",
+        "z": "tab_chem_dosing",
+        "name": "MQTT Actuator Stage 1 Alum",
+        "topic": "water/hardware/actuators/stage1_alum/relay",
+        "qos": "1",
+        "retain": "false",
+        "broker": "mqtt_broker_local",
+        "x": 1260,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "gpio_out_alum",
+        "type": "rpi-gpio out",
+        "z": "tab_chem_dosing",
+        "name": "GPIO 23 (Alum Peristaltic Relay)",
+        "pin": "16",
+        "set": "",
+        "level": "0",
+        "freq": "",
+        "out": "out",
+        "bcm": true,
+        "x": 1270,
+        "y": 190,
+        "wires": []
+    },
+    {
+        "id": "dbg_alum_out",
+        "type": "debug",
+        "z": "tab_chem_dosing",
+        "name": "Stage 1 Pump Debug Log",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1250,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "mqtt_out_chlorine",
+        "type": "mqtt out",
+        "z": "tab_chem_dosing",
+        "name": "MQTT Actuator Stage 3 Chlorine",
+        "topic": "water/hardware/actuators/stage3_chlorine/relay",
+        "qos": "1",
+        "retain": "false",
+        "broker": "mqtt_broker_local",
+        "x": 1270,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "gpio_out_chlorine",
+        "type": "rpi-gpio out",
+        "z": "tab_chem_dosing",
+        "name": "GPIO 24 (Chlorine Peristaltic Relay)",
+        "pin": "18",
+        "set": "",
+        "level": "0",
+        "freq": "",
+        "out": "out",
+        "bcm": true,
+        "x": 1280,
+        "y": 350,
+        "wires": []
+    },
+    {
+        "id": "dbg_chlorine_out",
+        "type": "debug",
+        "z": "tab_chem_dosing",
+        "name": "Stage 3 Pump Debug Log",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1260,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "mqtt_out_telemetry",
+        "type": "mqtt out",
+        "z": "tab_chem_dosing",
+        "name": "MQTT Dosing Telemetry",
+        "topic": "water/telemetry/chemical_dosing",
+        "qos": "0",
+        "retain": "true",
+        "broker": "mqtt_broker_local",
+        "x": 900,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "dbg_telemetry",
+        "type": "debug",
+        "z": "tab_chem_dosing",
+        "name": "Telemetry Log",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 860,
+        "y": 490,
+        "wires": []
+    },
+    {
+        "id": "mqtt_broker_local",
+        "type": "mqtt-broker",
+        "name": "Local MQTT Broker",
+        "broker": "localhost",
+        "port": "1883",
+        "clientid": "nodered_water_chem_controller",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true
+    }
+]
