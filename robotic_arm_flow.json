@@ -1,0 +1,171 @@
+[
+  {
+    "id": "arm_tab",
+    "type": "tab",
+    "label": "Robotic Arm Control",
+    "disabled": false,
+    "info": "Servo-driven delivery arm controller"
+  },
+  {
+    "id": "arm_slider",
+    "type": "ui_slider",
+    "z": "arm_tab",
+    "name": "Arm Angle Slider",
+    "label": "Arm Position (degrees)",
+    "group": "arm_group",
+    "order": 1,
+    "width": 6,
+    "height": 1,
+    "passthru": true,
+    "outs": "end",
+    "topic": "arm_angle",
+    "min": 0,
+    "max": 90,
+    "step": 1,
+    "className": "",
+    "x": 200,
+    "y": 120,
+    "wires": [
+      [
+        "angle_command"
+      ]
+    ]
+  },
+  {
+    "id": "extend_button",
+    "type": "ui_button",
+    "z": "arm_tab",
+    "name": "Extend Arm",
+    "group": "arm_group",
+    "order": 2,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Extend Arm",
+    "tooltip": "Move arm to 90 degrees",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "arrow_upward",
+    "payload": "EXTEND",
+    "payloadType": "str",
+    "topic": "arm_command",
+    "x": 180,
+    "y": 200,
+    "wires": [
+      [
+        "serial_command"
+      ]
+    ]
+  },
+  {
+    "id": "retract_button",
+    "type": "ui_button",
+    "z": "arm_tab",
+    "name": "Retract Arm",
+    "group": "arm_group",
+    "order": 3,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Retract Arm",
+    "tooltip": "Move arm to 0 degrees",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "arrow_downward",
+    "payload": "RETRACT",
+    "payloadType": "str",
+    "topic": "arm_command",
+    "x": 180,
+    "y": 280,
+    "wires": [
+      [
+        "serial_command"
+      ]
+    ]
+  },
+  {
+    "id": "angle_command",
+    "type": "function",
+    "z": "arm_tab",
+    "name": "Format Angle Command",
+    "func": "let angle = Number(msg.payload);\nif (!Number.isFinite(angle)) return null;\nangle = Math.max(0, Math.min(90, Math.round(angle)));\nmsg.payload = 'ANGLE:' + angle;\nmsg.topic = 'arm_command';\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 450,
+    "y": 120,
+    "wires": [
+      [
+        "serial_command",
+        "angle_display"
+      ]
+    ]
+  },
+  {
+    "id": "serial_command",
+    "type": "debug",
+    "z": "arm_tab",
+    "name": "Arm Command Preview",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 700,
+    "y": 240,
+    "wires": []
+  },
+  {
+    "id": "angle_display",
+    "type": "ui_text",
+    "z": "arm_tab",
+    "group": "arm_group",
+    "order": 4,
+    "width": 6,
+    "height": 1,
+    "name": "Angle Display",
+    "label": "Current Target",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 700,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "id": "arm_comment",
+    "type": "comment",
+    "z": "arm_tab",
+    "name": "Connect serial output after installing serial nodes",
+    "info": "Replace the debug output with a serial out node configured for the Arduino COM port.",
+    "x": 460,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "id": "arm_group",
+    "type": "ui_group",
+    "name": "Arm Controls",
+    "tab": "arm_dashboard_tab",
+    "order": 1,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "arm_dashboard_tab",
+    "type": "ui_tab",
+    "name": "Robotic Arm",
+    "icon": "dashboard",
+    "order": 1,
+    "disabled": false,
+    "hidden": false
+  }
+]
