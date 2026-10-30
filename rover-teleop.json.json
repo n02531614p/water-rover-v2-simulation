@@ -1,0 +1,139 @@
+[
+    {
+        "id": "teleop-flow",
+        "type": "tab",
+        "label": "Rover Teleop",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "ui_forward",
+        "type": "ui_button",
+        "z": "teleop-flow",
+        "name": "Forward",
+        "group": "teleop-group",
+        "order": 1,
+        "width": 2,
+        "height": 1,
+        "label": "⬆ Forward",
+        "color": "white",
+        "bgcolor": "green",
+        "payload": "forward",
+        "payloadType": "str",
+        "topic": "teleop",
+        "x": 200,
+        "y": 100,
+        "wires": [
+            [
+                "teleop-output"
+            ]
+        ]
+    },
+    {
+        "id": "ui_reverse",
+        "type": "ui_button",
+        "z": "teleop-flow",
+        "name": "Reverse",
+        "group": "teleop-group",
+        "order": 2,
+        "width": 2,
+        "height": 1,
+        "label": "⬇ Reverse",
+        "color": "white",
+        "bgcolor": "red",
+        "payload": "reverse",
+        "payloadType": "str",
+        "topic": "teleop",
+        "x": 200,
+        "y": 160,
+        "wires": [
+            [
+                "teleop-output"
+            ]
+        ]
+    },
+    {
+        "id": "ui_left",
+        "type": "ui_button",
+        "z": "teleop-flow",
+        "name": "Left",
+        "group": "teleop-group",
+        "order": 3,
+        "width": 2,
+        "height": 1,
+        "label": "⬅ Left",
+        "color": "white",
+        "bgcolor": "blue",
+        "payload": "left",
+        "payloadType": "str",
+        "topic": "teleop",
+        "x": 200,
+        "y": 220,
+        "wires": [
+            [
+                "teleop-output"
+            ]
+        ]
+    },
+    {
+        "id": "ui_right",
+        "type": "ui_button",
+        "z": "teleop-flow",
+        "name": "Right",
+        "group": "teleop-group",
+        "order": 4,
+        "width": 2,
+        "height": 1,
+        "label": "➡ Right",
+        "color": "white",
+        "bgcolor": "blue",
+        "payload": "right",
+        "payloadType": "str",
+        "topic": "teleop",
+        "x": 200,
+        "y": 280,
+        "wires": [
+            [
+                "teleop-output"
+            ]
+        ]
+    },
+    {
+        "id": "ui_stop",
+        "type": "ui_button",
+        "z": "teleop-flow",
+        "name": "Stop",
+        "group": "teleop-group",
+        "order": 5,
+        "width": 2,
+        "height": 1,
+        "label": "⏹ Stop",
+        "color": "white",
+        "bgcolor": "gray",
+        "payload": "stop",
+        "payloadType": "str",
+        "topic": "teleop",
+        "x": 200,
+        "y": 340,
+        "wires": [
+            [
+                "teleop-output"
+            ]
+        ]
+    },
+    {
+        "id": "teleop-output",
+        "type": "debug",
+        "z": "teleop-flow",
+        "name": "Teleop Output",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 500,
+        "y": 220,
+        "wires": []
+    }
+]
