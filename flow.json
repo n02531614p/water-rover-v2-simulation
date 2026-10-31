@@ -1,0 +1,14 @@
+[
+ {"id":"tab1","type":"tab","label":"Filtration Monitor","disabled":false,"info":""},
+ {"id":"broker","type":"mqtt-broker","name":"Local","broker":"localhost","port":"1883","clientid":"","autoConnect":true,"usetls":false,"protocolVersion":"4","keepalive":"60","cleansession":true},
+ {"id":"uitab","type":"ui_tab","name":"Water Rover","icon":"dashboard","order":1},
+ {"id":"uigrp","type":"ui_group","name":"Filtration","tab":"uitab","order":1,"disp":true,"width":"6","collapse":false},
+ {"id":"in1","type":"mqtt in","z":"tab1","name":"status","topic":"rover/filtration/status","qos":"0","datatype":"json","broker":"broker","x":110,"y":140,"wires":[["split"]]},
+ {"id":"split","type":"function","z":"tab1","name":"split outputs","func":"const d = msg.payload;\nreturn [\n {payload: d.s1},\n {payload: d.s2},\n {payload: d.s3},\n {payload: d}\n];","outputs":4,"x":290,"y":140,"wires":[["g1"],["g2"],["g3"],["badge"]]},
+ {"id":"g1","type":"ui_gauge","z":"tab1","name":"Stage 1 Raw","group":"uigrp","order":1,"width":2,"height":3,"gtype":"gage","title":"Stage 1 Raw Tank","label":"%","format":"{{value}}","min":0,"max":100,"colors":["#e74c3c","#f1c40f","#2ecc71"],"seg1":"15","seg2":"40","x":520,"y":80,"wires":[]},
+ {"id":"g2","type":"ui_gauge","z":"tab1","name":"Stage 2 Column","group":"uigrp","order":2,"width":2,"height":3,"gtype":"gage","title":"Stage 2 Column","label":"%","format":"{{value}}","min":0,"max":100,"colors":["#2ecc71","#f1c40f","#e74c3c"],"seg1":"70","seg2":"90","x":520,"y":120,"wires":[]},
+ {"id":"g3","type":"ui_gauge","z":"tab1","name":"Stage 3 Clean","group":"uigrp","order":3,"width":2,"height":3,"gtype":"gage","title":"Stage 3 Clean Tank","label":"%","format":"{{value}}","min":0,"max":100,"colors":["#e74c3c","#f1c40f","#2ecc71"],"seg1":"15","seg2":"40","x":520,"y":160,"wires":[]},
+ {"id":"badge","type":"ui_template","z":"tab1","group":"uigrp","name":"Health badge","order":4,"width":6,"height":2,"format":"<div style=\"padding:12px;border-radius:10px;text-align:center;font-weight:bold;color:#fff;background:{{ {HEALTHY:'#2ecc71',CLOGGING:'#e67e22',OVERFLOW:'#e74c3c',SOURCE_LOW:'#f1c40f',TANK_FULL:'#3498db',MANUAL_PAUSE:'#7f8c8d'}[msg.payload.health] || '#999' }}\">\n Filtration: {{msg.payload.health}}<br>\n <small>Intake: {{msg.payload.intake ? 'ON' : 'PAUSED'}} | Flow: {{msg.payload.flow}} %/s</small>\n</div>","storeOutMessages":true,"fwdInMessages":false,"resendOnRefresh":true,"templateScope":"local","x":530,"y":200,"wires":[[]]},
+ {"id":"sw","type":"ui_switch","z":"tab1","name":"Intake override","label":"Pause intake","group":"uigrp","order":5,"width":6,"height":1,"passthru":false,"decouple":"false","topic":"cmd","style":"","onvalue":"pause","onvalueType":"str","offvalue":"auto","offvalueType":"str","x":120,"y":260,"wires":[["out1"]]},
+ {"id":"out1","type":"mqtt out","z":"tab1","name":"cmd","topic":"rover/filtration/cmd","qos":"0","retain":"false","broker":"broker","x":330,"y":260,"wires":[]}
+]
