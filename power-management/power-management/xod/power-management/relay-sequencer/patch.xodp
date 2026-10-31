@@ -1,0 +1,193 @@
+{
+  "description": "Relay sequencer for a 4-channel relay board on a 5 V power bank. Switches loads on ONE AT A TIME (staggered by STAG ms, lowest rank first: CH2, CH3, CH1, CH4), sheds the least important load when the 5 V rail sags, latches EMERGENCY on a critical rail, and implements MODE 0=ACTIVE, 1=SLEEP, 2=EMERGENCY. PINx = level to write to the relay input (inverted when ACTLOW). RAIL: 0 unknown, 1 ok, 2 sag, 3 critical.",
+  "nodes": [
+    {
+      "id": "pmT01",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "label": "REQ1",
+      "boundLiterals": {
+        "__out__": "False"
+      }
+    },
+    {
+      "id": "pmT02",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 102,
+        "y": 0
+      },
+      "label": "REQ2",
+      "boundLiterals": {
+        "__out__": "False"
+      }
+    },
+    {
+      "id": "pmT03",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 204,
+        "y": 0
+      },
+      "label": "REQ3",
+      "boundLiterals": {
+        "__out__": "False"
+      }
+    },
+    {
+      "id": "pmT04",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 306,
+        "y": 0
+      },
+      "label": "REQ4",
+      "boundLiterals": {
+        "__out__": "False"
+      }
+    },
+    {
+      "id": "pmT05",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 408,
+        "y": 0
+      },
+      "label": "MODE",
+      "boundLiterals": {
+        "__out__": "1"
+      }
+    },
+    {
+      "id": "pmT06",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 510,
+        "y": 0
+      },
+      "label": "RST",
+      "boundLiterals": {
+        "__out__": "Never"
+      }
+    },
+    {
+      "id": "pmT07",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 612,
+        "y": 0
+      },
+      "label": "VBAT",
+      "boundLiterals": {
+        "__out__": "5"
+      }
+    },
+    {
+      "id": "pmT08",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 714,
+        "y": 0
+      },
+      "label": "ACTLOW",
+      "boundLiterals": {
+        "__out__": "True"
+      }
+    },
+    {
+      "id": "pmT09",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 816,
+        "y": 0
+      },
+      "label": "STAG",
+      "boundLiterals": {
+        "__out__": "600"
+      }
+    },
+    {
+      "id": "pmT10",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 0,
+        "y": 306
+      },
+      "label": "PIN1"
+    },
+    {
+      "id": "pmT11",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 102,
+        "y": 306
+      },
+      "label": "PIN2"
+    },
+    {
+      "id": "pmT12",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 204,
+        "y": 306
+      },
+      "label": "PIN3"
+    },
+    {
+      "id": "pmT13",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 306,
+        "y": 306
+      },
+      "label": "PIN4"
+    },
+    {
+      "id": "pmT14",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 408,
+        "y": 306
+      },
+      "label": "RAIL"
+    },
+    {
+      "id": "pmT15",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 510,
+        "y": 306
+      },
+      "label": "MODEO"
+    },
+    {
+      "id": "pmT16",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 612,
+        "y": 306
+      },
+      "label": "PEND"
+    },
+    {
+      "id": "pmT17",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 714,
+        "y": 306
+      },
+      "label": "BROWN"
+    },
+    {
+      "id": "pmT18",
+      "type": "xod/patch-nodes/not-implemented-in-xod",
+      "position": {
+        "x": 0,
+        "y": 153
+      }
+    }
+  ]
+}

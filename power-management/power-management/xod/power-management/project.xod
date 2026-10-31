@@ -1,0 +1,7 @@
+{
+  "authors": [],
+  "description": "XOD patches for Water Rover v2 power management (Issue #10)",
+  "license": "MIT",
+  "name": "power-management",
+  "version": "0.0.0"
+}
