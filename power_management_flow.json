@@ -1,0 +1,852 @@
+[
+  {
+    "id": "pm_tab",
+    "type": "tab",
+    "label": "Power Management (Issue #10)",
+    "disabled": false,
+    "info": "Battery / 5 V rail meter, power-mode toggle (Active / Sleep / Emergency Shutdown) and relay load view for the Water Rover v2 power manager.\n\nMQTT topics:\n- rover/power/status (in)  JSON from the ESP32\n- rover/power/cmd (out)    active | sleep | emergency | reset\n- rover/power/req/1..4 (out) 1 | 0  load requests\n\nNo hardware? Switch on 'Simulate ESP32' on the dashboard."
+  },
+  {
+    "id": "pm_broker",
+    "type": "mqtt-broker",
+    "name": "Local",
+    "broker": "localhost",
+    "port": "1883",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": "",
+    "willMsg": {},
+    "userProps": "",
+    "sessionExpiry": ""
+  },
+  {
+    "id": "pm_ui_tab",
+    "type": "ui_tab",
+    "name": "Power",
+    "icon": "battery_charging_full",
+    "disabled": false,
+    "hidden": false,
+    "order": 2
+  },
+  {
+    "id": "pm_g_rail",
+    "type": "ui_group",
+    "name": "Battery & 5 V rail",
+    "tab": "pm_ui_tab",
+    "order": 1,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "pm_g_mode",
+    "type": "ui_group",
+    "name": "Power mode",
+    "tab": "pm_ui_tab",
+    "order": 2,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "pm_g_load",
+    "type": "ui_group",
+    "name": "Load channels (relays)",
+    "tab": "pm_ui_tab",
+    "order": 3,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "pm_g_sim",
+    "type": "ui_group",
+    "name": "Simulation (no hardware)",
+    "tab": "pm_ui_tab",
+    "order": 4,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "pm_note",
+    "type": "comment",
+    "z": "pm_tab",
+    "name": "Issue #10 - Power Distribution & Load Management",
+    "info": "Status in: rover/power/status. Commands out: rover/power/cmd, rover/power/req/N.",
+    "x": 230,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "id": "pm_mqtt_in",
+    "type": "mqtt in",
+    "z": "pm_tab",
+    "name": "rover/power/status",
+    "topic": "rover/power/status",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "pm_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 150,
+    "y": 120,
+    "wires": [
+      [
+        "pm_route",
+        "pm_dbg"
+      ]
+    ]
+  },
+  {
+    "id": "pm_route",
+    "type": "function",
+    "z": "pm_tab",
+    "name": "Route status",
+    "func": "// Route status: ESP32 (or simulator) status JSON -> dashboard widgets\nlet s = msg.payload;\nif (typeof s === 'string') {\n    try { s = JSON.parse(s); } catch (e) { node.warn('rover/power/status: bad JSON'); return null; }\n}\nif (!s || typeof s !== 'object' || s.rail_v === undefined) return null;\n\nconst NAMES = ['CH1 Intake pump', 'CH2 Left motor', 'CH3 Right motor', 'CH4 Aux pump'];\nconst v = Number(s.rail_v);\nconst prev = context.get('prev') || {};\ncontext.set('prev', { rail: s.rail, mode: s.mode, brownouts: s.brownouts });\n\nconst gauge  = { payload: Math.round(v * 100) / 100 };\nconst chart  = { payload: v, topic: '5 V rail' };\nconst rail   = { payload: s.rail + '  \u00b7  ' + v.toFixed(2) + ' V' };\nconst mode   = { payload: s.mode + (s.fault ? '  \u2014  ' + s.fault : '') };\n\nlet rows = '';\nfor (let i = 0; i < 4; i++) {\n    const on = s.ch && s.ch[i], want = s.want && s.want[i];\n    let label = 'OFF', colour = '#8a8f98';\n    if (on) { label = 'ON'; colour = '#28a745'; }\n    else if (want && s.mode === 'ACTIVE') { label = 'WAITING'; colour = '#e6a23c'; }\n    else if (want) { label = 'BLOCKED (' + s.mode + ')'; colour = '#dc3545'; }\n    rows += '<tr><td style=\"padding:3px 0\">' + NAMES[i] + '</td><td style=\"text-align:right\">' +\n            '<span style=\"background:' + colour + ';color:#fff;border-radius:10px;padding:2px 10px;font-size:12px\">' +\n            label + '</span></td></tr>';\n}\nconst table = { payload: '<table style=\"width:100%\">' + rows + '</table>' };\n\nlet toast = null;\nif ((s.rail === 'SAG' || s.rail === 'CRITICAL') && s.rail !== prev.rail) {\n    toast = { topic: '5 V rail ' + s.rail, payload: 'Rail voltage ' + v.toFixed(2) + ' V' };\n} else if (s.mode === 'EMERGENCY' && prev.mode !== 'EMERGENCY') {\n    toast = { topic: 'EMERGENCY SHUTDOWN', payload: (s.fault || 'all loads off') };\n} else if (s.brownouts > (prev.brownouts || 0)) {\n    toast = { topic: 'Brownout guard', payload: 'Load shed (' + s.brownouts + ' total)' };\n}\n\nreturn [gauge, chart, rail, mode, table, toast, { payload: s }, { payload: 'ONLINE' }, { payload: 'ping' }];\n",
+    "outputs": 9,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 370,
+    "y": 220,
+    "wires": [
+      [
+        "pm_gauge"
+      ],
+      [
+        "pm_chart"
+      ],
+      [
+        "pm_rail_txt"
+      ],
+      [
+        "pm_mode_txt"
+      ],
+      [
+        "pm_table"
+      ],
+      [
+        "pm_toast"
+      ],
+      [
+        "pm_est"
+      ],
+      [
+        "pm_link"
+      ],
+      [
+        "pm_wd"
+      ]
+    ]
+  },
+  {
+    "id": "pm_gauge",
+    "type": "ui_gauge",
+    "z": "pm_tab",
+    "name": "5 V rail",
+    "group": "pm_g_rail",
+    "order": 1,
+    "width": 3,
+    "height": 3,
+    "gtype": "gage",
+    "title": "5 V rail",
+    "label": "V",
+    "format": "{{value}}",
+    "min": 3.5,
+    "max": 5.5,
+    "colors": [
+      "#ca3838",
+      "#e6a23c",
+      "#52c41a"
+    ],
+    "seg1": "4.5",
+    "seg2": "4.75",
+    "diff": false,
+    "className": "",
+    "x": 620,
+    "y": 60,
+    "wires": []
+  },
+  {
+    "id": "pm_chart",
+    "type": "ui_chart",
+    "z": "pm_tab",
+    "name": "Rail history",
+    "group": "pm_g_rail",
+    "order": 3,
+    "width": 6,
+    "height": 4,
+    "label": "Rail voltage (last 10 min)",
+    "chartType": "line",
+    "legend": "false",
+    "xformat": "HH:mm:ss",
+    "interpolate": "linear",
+    "nodata": "Waiting for rover/power/status",
+    "dot": false,
+    "ymin": "3.5",
+    "ymax": "5.5",
+    "removeOlder": "10",
+    "removeOlderPoints": "",
+    "removeOlderUnit": "60",
+    "cutout": 0,
+    "useOneColor": false,
+    "useUTC": false,
+    "colors": [
+      "#1f77b4",
+      "#aec7e8",
+      "#ff7f0e",
+      "#2ca02c",
+      "#98df8a",
+      "#d62728",
+      "#ff9896",
+      "#9467bd",
+      "#c5b0d5"
+    ],
+    "outputs": 1,
+    "useDifferentColor": false,
+    "className": "",
+    "x": 620,
+    "y": 100,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "pm_rail_txt",
+    "type": "ui_text",
+    "z": "pm_tab",
+    "group": "pm_g_rail",
+    "order": 2,
+    "width": 3,
+    "height": 1,
+    "name": "Rail state",
+    "label": "Rail:",
+    "format": "{{msg.payload}}",
+    "layout": "col-center",
+    "className": "",
+    "x": 620,
+    "y": 140,
+    "wires": []
+  },
+  {
+    "id": "pm_mode_txt",
+    "type": "ui_text",
+    "z": "pm_tab",
+    "group": "pm_g_mode",
+    "order": 1,
+    "width": 6,
+    "height": 1,
+    "name": "Current mode",
+    "label": "Mode:",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "id": "pm_table",
+    "type": "ui_template",
+    "z": "pm_tab",
+    "group": "pm_g_load",
+    "name": "Channel table",
+    "order": 1,
+    "width": 6,
+    "height": 3,
+    "format": "<div ng-bind-html=\"msg.payload\"></div>",
+    "storeOutMessages": true,
+    "fwdInMessages": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 630,
+    "y": 220,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "pm_toast",
+    "type": "ui_toast",
+    "z": "pm_tab",
+    "position": "top right",
+    "displayTime": "6",
+    "highlight": "",
+    "sendall": true,
+    "outputs": 0,
+    "ok": "OK",
+    "cancel": "",
+    "raw": false,
+    "className": "",
+    "topic": "",
+    "name": "Alerts",
+    "x": 610,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "id": "pm_link",
+    "type": "ui_text",
+    "z": "pm_tab",
+    "group": "pm_g_mode",
+    "order": 2,
+    "width": 6,
+    "height": 1,
+    "name": "ESP32 link",
+    "label": "ESP32 link:",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 300,
+    "wires": []
+  },
+  {
+    "id": "pm_wd",
+    "type": "trigger",
+    "z": "pm_tab",
+    "name": "Offline watchdog (10 s)",
+    "op1": "",
+    "op2": "OFFLINE",
+    "op1type": "nul",
+    "op2type": "str",
+    "duration": "10",
+    "extend": true,
+    "overrideDelay": false,
+    "units": "s",
+    "reset": "",
+    "bytopic": "all",
+    "topic": "topic",
+    "outputs": 1,
+    "x": 620,
+    "y": 340,
+    "wires": [
+      [
+        "pm_link"
+      ]
+    ]
+  },
+  {
+    "id": "pm_est",
+    "type": "function",
+    "z": "pm_tab",
+    "name": "Battery estimate (mAh)",
+    "func": "// Battery estimate. A USB power bank outputs a regulated 5 V until it is almost empty, so the\n// rail voltage cannot show remaining charge. Instead we integrate the load current (mAh used).\n// ASSUMPTIONS - replace with values measured on the real rover using a USB power meter:\nconst CAPACITY_MAH = 10000;     // label capacity of the bank (rated at ~3.7 V cell voltage)\nconst EFFICIENCY   = 0.65;      // usable fraction at 5 V after boost-converter losses\nconst I_ACTIVE_BASE = 260;      // mA: ESP32 (Wi-Fi, 240 MHz) + relay board idle\nconst I_SLEEP_BASE  = 110;      // mA: ESP32 at 80 MHz, loads off\nconst I_RELAY_COIL  = 70;       // mA per energised relay coil\nconst I_CH = [900, 650, 650, 450];   // mA per load while running: pump, left, right, aux\n\nlet used = context.get('used') || 0;\nlet last = context.get('last') || null;\nconst now = Date.now();\n\nif (msg.reset) {\n    used = 0; last = now;\n    context.set('used', used); context.set('last', last);\n    return [{ payload: 100 }, { payload: 'estimate reset to 100 %' }];\n}\n\nconst s = msg.payload;\nif (!s || s.mode === undefined) return null;\nlet mA = (s.mode === 'ACTIVE') ? I_ACTIVE_BASE : I_SLEEP_BASE;\nfor (let i = 0; i < 4; i++) if (s.ch && s.ch[i]) mA += I_CH[i] + I_RELAY_COIL;\n\nif (last !== null) used += mA * Math.min((now - last) / 1000, 30) / 3600;   // ignore gaps > 30 s\nlast = now;\ncontext.set('used', used); context.set('last', last);\n\nconst usable = CAPACITY_MAH * EFFICIENCY;\nconst remaining = Math.max(0, usable - used);\nconst pct = Math.round(100 * remaining / usable);\nconst hrs = remaining / mA;\nconst h = Math.floor(hrs), m = Math.round((hrs - h) * 60);\nreturn [{ payload: pct }, { payload: '~' + h + ' h ' + m + ' min at ' + mA + ' mA  (' + Math.round(used) + ' mAh used)' }];\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 420,
+    "wires": [
+      [
+        "pm_batt_gauge"
+      ],
+      [
+        "pm_batt_txt"
+      ]
+    ]
+  },
+  {
+    "id": "pm_batt_gauge",
+    "type": "ui_gauge",
+    "z": "pm_tab",
+    "name": "Estimated charge",
+    "group": "pm_g_rail",
+    "order": 4,
+    "width": 3,
+    "height": 3,
+    "gtype": "gage",
+    "title": "Est. charge left",
+    "label": "%",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 100,
+    "colors": [
+      "#ca3838",
+      "#e6a23c",
+      "#52c41a"
+    ],
+    "seg1": "20",
+    "seg2": "50",
+    "diff": false,
+    "className": "",
+    "x": 650,
+    "y": 400,
+    "wires": []
+  },
+  {
+    "id": "pm_batt_txt",
+    "type": "ui_text",
+    "z": "pm_tab",
+    "group": "pm_g_rail",
+    "order": 5,
+    "width": 6,
+    "height": 1,
+    "name": "Runtime estimate",
+    "label": "Runtime:",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 650,
+    "y": 440,
+    "wires": []
+  },
+  {
+    "id": "pm_btn_full",
+    "type": "ui_button",
+    "z": "pm_tab",
+    "name": "Battery full",
+    "group": "pm_g_rail",
+    "order": 6,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Power bank recharged",
+    "tooltip": "Reset the charge estimate to 100 %",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "battery_full",
+    "payload": "{\"reset\":true}",
+    "payloadType": "json",
+    "topic": "topic",
+    "topicType": "msg",
+    "x": 150,
+    "y": 420,
+    "wires": [
+      [
+        "pm_est"
+      ]
+    ]
+  },
+  {
+    "id": "pm_btn_active",
+    "type": "ui_button",
+    "z": "pm_tab",
+    "name": "Active",
+    "group": "pm_g_mode",
+    "order": 3,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "ACTIVE",
+    "tooltip": "",
+    "color": "#ffffff",
+    "bgcolor": "#28a745",
+    "className": "",
+    "icon": "play_arrow",
+    "payload": "active",
+    "payloadType": "str",
+    "topic": "rover/power/cmd",
+    "topicType": "str",
+    "x": 140,
+    "y": 520,
+    "wires": [
+      [
+        "pm_cmd_out",
+        "pm_sim"
+      ]
+    ]
+  },
+  {
+    "id": "pm_btn_sleep",
+    "type": "ui_button",
+    "z": "pm_tab",
+    "name": "Sleep",
+    "group": "pm_g_mode",
+    "order": 4,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "SLEEP",
+    "tooltip": "",
+    "color": "#ffffff",
+    "bgcolor": "#6c757d",
+    "className": "",
+    "icon": "bedtime",
+    "payload": "sleep",
+    "payloadType": "str",
+    "topic": "rover/power/cmd",
+    "topicType": "str",
+    "x": 140,
+    "y": 560,
+    "wires": [
+      [
+        "pm_cmd_out",
+        "pm_sim"
+      ]
+    ]
+  },
+  {
+    "id": "pm_btn_emerg",
+    "type": "ui_button",
+    "z": "pm_tab",
+    "name": "Emergency shutdown",
+    "group": "pm_g_mode",
+    "order": 5,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "EMERGENCY SHUTDOWN",
+    "tooltip": "",
+    "color": "#ffffff",
+    "bgcolor": "#dc3545",
+    "className": "",
+    "icon": "warning",
+    "payload": "emergency",
+    "payloadType": "str",
+    "topic": "rover/power/cmd",
+    "topicType": "str",
+    "x": 140,
+    "y": 600,
+    "wires": [
+      [
+        "pm_cmd_out",
+        "pm_sim"
+      ]
+    ]
+  },
+  {
+    "id": "pm_btn_reset",
+    "type": "ui_button",
+    "z": "pm_tab",
+    "name": "Reset latch",
+    "group": "pm_g_mode",
+    "order": 6,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "RESET EMERGENCY LATCH",
+    "tooltip": "",
+    "color": "#000000",
+    "bgcolor": "#f0ad4e",
+    "className": "",
+    "icon": "restart_alt",
+    "payload": "reset",
+    "payloadType": "str",
+    "topic": "rover/power/cmd",
+    "topicType": "str",
+    "x": 140,
+    "y": 640,
+    "wires": [
+      [
+        "pm_cmd_out",
+        "pm_sim"
+      ]
+    ]
+  },
+  {
+    "id": "pm_cmd_out",
+    "type": "mqtt out",
+    "z": "pm_tab",
+    "name": "rover/power/cmd  + req/N",
+    "topic": "",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "pm_broker",
+    "x": 420,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "id": "pm_sw1",
+    "type": "ui_switch",
+    "z": "pm_tab",
+    "name": "CH1 Intake pump",
+    "label": "Request CH1 Intake pump",
+    "tooltip": "",
+    "group": "pm_g_load",
+    "order": 2,
+    "width": 6,
+    "height": 1,
+    "passthru": false,
+    "decouple": "false",
+    "topic": "rover/power/req/1",
+    "topicType": "str",
+    "style": "",
+    "onvalue": "1",
+    "onvalueType": "str",
+    "onicon": "",
+    "oncolor": "",
+    "offvalue": "0",
+    "offvalueType": "str",
+    "officon": "",
+    "offcolor": "",
+    "animate": false,
+    "className": "",
+    "x": 150,
+    "y": 700,
+    "wires": [
+      [
+        "pm_cmd_out",
+        "pm_sim"
+      ]
+    ]
+  },
+  {
+    "id": "pm_sw2",
+    "type": "ui_switch",
+    "z": "pm_tab",
+    "name": "CH2 Left motor",
+    "label": "Request CH2 Left motor",
+    "tooltip": "",
+    "group": "pm_g_load",
+    "order": 3,
+    "width": 6,
+    "height": 1,
+    "passthru": false,
+    "decouple": "false",
+    "topic": "rover/power/req/2",
+    "topicType": "str",
+    "style": "",
+    "onvalue": "1",
+    "onvalueType": "str",
+    "onicon": "",
+    "oncolor": "",
+    "offvalue": "0",
+    "offvalueType": "str",
+    "officon": "",
+    "offcolor": "",
+    "animate": false,
+    "className": "",
+    "x": 150,
+    "y": 740,
+    "wires": [
+      [
+        "pm_cmd_out",
+        "pm_sim"
+      ]
+    ]
+  },
+  {
+    "id": "pm_sw3",
+    "type": "ui_switch",
+    "z": "pm_tab",
+    "name": "CH3 Right motor",
+    "label": "Request CH3 Right motor",
+    "tooltip": "",
+    "group": "pm_g_load",
+    "order": 4,
+    "width": 6,
+    "height": 1,
+    "passthru": false,
+    "decouple": "false",
+    "topic": "rover/power/req/3",
+    "topicType": "str",
+    "style": "",
+    "onvalue": "1",
+    "onvalueType": "str",
+    "onicon": "",
+    "oncolor": "",
+    "offvalue": "0",
+    "offvalueType": "str",
+    "officon": "",
+    "offcolor": "",
+    "animate": false,
+    "className": "",
+    "x": 150,
+    "y": 780,
+    "wires": [
+      [
+        "pm_cmd_out",
+        "pm_sim"
+      ]
+    ]
+  },
+  {
+    "id": "pm_sw4",
+    "type": "ui_switch",
+    "z": "pm_tab",
+    "name": "CH4 Aux pump",
+    "label": "Request CH4 Aux pump",
+    "tooltip": "",
+    "group": "pm_g_load",
+    "order": 5,
+    "width": 6,
+    "height": 1,
+    "passthru": false,
+    "decouple": "false",
+    "topic": "rover/power/req/4",
+    "topicType": "str",
+    "style": "",
+    "onvalue": "1",
+    "onvalueType": "str",
+    "onicon": "",
+    "oncolor": "",
+    "offvalue": "0",
+    "offvalueType": "str",
+    "officon": "",
+    "offcolor": "",
+    "animate": false,
+    "className": "",
+    "x": 150,
+    "y": 820,
+    "wires": [
+      [
+        "pm_cmd_out",
+        "pm_sim"
+      ]
+    ]
+  },
+  {
+    "id": "pm_sim_sw",
+    "type": "ui_switch",
+    "z": "pm_tab",
+    "name": "Simulate ESP32",
+    "label": "Simulate ESP32 (no hardware)",
+    "tooltip": "",
+    "group": "pm_g_sim",
+    "order": 1,
+    "width": 6,
+    "height": 1,
+    "passthru": true,
+    "decouple": "false",
+    "topic": "sim/enable",
+    "topicType": "str",
+    "style": "",
+    "onvalue": "true",
+    "onvalueType": "bool",
+    "onicon": "",
+    "oncolor": "",
+    "offvalue": "false",
+    "offvalueType": "bool",
+    "officon": "",
+    "offcolor": "",
+    "animate": false,
+    "className": "",
+    "x": 160,
+    "y": 880,
+    "wires": [
+      [
+        "pm_sim"
+      ]
+    ]
+  },
+  {
+    "id": "pm_sag_btn",
+    "type": "ui_button",
+    "z": "pm_tab",
+    "name": "Simulate brownout",
+    "group": "pm_g_sim",
+    "order": 2,
+    "width": 6,
+    "height": 1,
+    "passthru": false,
+    "label": "Inject 1.5 s brownout (4.35 V)",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "#e6a23c",
+    "className": "",
+    "icon": "flash_off",
+    "payload": "1",
+    "payloadType": "str",
+    "topic": "sim/sag",
+    "topicType": "str",
+    "x": 170,
+    "y": 920,
+    "wires": [
+      [
+        "pm_sim"
+      ]
+    ]
+  },
+  {
+    "id": "pm_tick",
+    "type": "inject",
+    "z": "pm_tab",
+    "name": "sim tick 200 ms",
+    "props": [
+      {
+        "p": "topic",
+        "vt": "str"
+      },
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "0.2",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "1",
+    "topic": "tick",
+    "payload": "1",
+    "payloadType": "str",
+    "x": 160,
+    "y": 960,
+    "wires": [
+      [
+        "pm_sim"
+      ]
+    ]
+  },
+  {
+    "id": "pm_sim",
+    "type": "function",
+    "z": "pm_tab",
+    "name": "Simulated ESP32 power manager",
+    "func": "// Simulated ESP32 power manager (no hardware needed). Same rules as power_core.h.\nconst NOW = Date.now();\nlet S = context.get('S');\nif (!S) {\n    S = { enabled: false, mode: 'SLEEP', latched: false, want: [0, 0, 0, 0], on: [0, 0, 0, 0],\n          lastStart: null, offAt: [null, null, null, null], lockoutAt: null, lowSince: null,\n          critSince: null, okSince: null, streak: 0, brown: 0, fault: '', sagUntil: 0,\n          t0: NOW, lastPub: 0, lastSig: '', railName: 'OK', pending: 0, justShed: false };\n}\nconst C = { stagger: 600, minOff: 1000, shedDebounce: 150, backoff: 5000, critHold: 1000, decay: 30000,\n            settle: 1000, maxBrown: 3, startMin: 4.75, shed: 4.50, crit: 4.20, rank: [2, 0, 1, 3] };\n\nfunction switchOff(i) { if (S.on[i]) { S.on[i] = 0; S.offAt[i] = NOW; } }\nfunction emergency(why) { S.latched = true; S.mode = 'EMERGENCY'; S.fault = why; for (let i = 0; i < 4; i++) switchOff(i); S.pending = 0; }\nfunction setMode(m) {\n    if (m === 'EMERGENCY') { emergency('operator emergency shutdown'); return; }\n    if (S.latched) return;\n    if (m === 'ACTIVE' && S.mode !== 'ACTIVE') S.streak = 0;\n    S.mode = m;\n}\nfunction reset() { if (!S.latched) return; S.justShed = false; S.latched = false; S.mode = 'SLEEP'; S.fault = ''; S.streak = 0; S.lockoutAt = null; S.lowSince = S.critSince = null; }\nfunction shedOne() {\n    let victim = -1;\n    for (let i = 0; i < 4; i++) if (S.on[i] && (victim < 0 || C.rank[i] > C.rank[victim])) victim = i;\n    if (victim < 0) return false;\n    switchOff(victim); return true;\n}\n\n// ---------- commands ----------\nconst topic = msg.topic || '';\nif (topic === 'sim/enable') {\n    S.enabled = !!msg.payload;\n    if (S.enabled) { S.mode = 'SLEEP'; S.latched = false; S.on = [0, 0, 0, 0]; S.want = [0, 0, 0, 0]; S.fault = ''; S.brown = 0; S.streak = 0; S.t0 = NOW; }\n    context.set('S', S); return null;\n}\nif (!S.enabled) return null;\nif (topic === 'rover/power/cmd') {\n    const c = String(msg.payload).toLowerCase();\n    if (c === 'active') setMode('ACTIVE'); else if (c === 'sleep') setMode('SLEEP');\n    else if (c === 'emergency' || c === 'estop') setMode('EMERGENCY'); else if (c === 'reset') reset();\n} else if (topic.indexOf('rover/power/req/') === 0) {\n    const ch = parseInt(topic.split('/').pop(), 10);\n    if (ch >= 1 && ch <= 4) S.want[ch - 1] = (String(msg.payload) === '1' || msg.payload === true) ? 1 : 0;\n} else if (topic === 'sim/sag') {\n    S.sagUntil = NOW + 1500;\n}\nif (topic !== 'tick') { context.set('S', S); return null; }\n\n// ---------- rail model ----------\nconst nOn = S.on.reduce((a, b) => a + b, 0);\nlet v = 5.05 - 0.04 * nOn + (Math.random() - 0.5) * 0.02;\nif (S.lastStart !== null && NOW - S.lastStart < 400) v -= 0.22;      // inrush dip\nif (NOW < S.sagUntil) v = 4.35 + (Math.random() - 0.5) * 0.02;       // injected brownout\nS.railName = v < C.crit ? 'CRITICAL' : (v < C.shed ? 'SAG' : 'OK');\n\n// ---------- sequencer (port of PowerSequencer::tick) ----------\nif (v < C.crit) {\n    if (S.critSince === null) S.critSince = NOW;\n    else if (NOW - S.critSince >= C.critHold && S.mode !== 'EMERGENCY') emergency('rail critical (< criticalV)');\n} else S.critSince = null;\n\nif (v < C.shed) {\n    S.okSince = null;\n    if (S.lowSince === null) S.lowSince = NOW;\n    else if (NOW - S.lowSince >= (S.justShed ? C.settle : C.shedDebounce)) {\n        S.lowSince = NOW;\n        if (S.mode === 'ACTIVE' && shedOne()) {\n            S.justShed = true; S.brown++; S.streak++; S.lockoutAt = NOW;\n            if (S.streak >= C.maxBrown) emergency('repeated brownouts');\n        }\n    }\n} else {\n    S.lowSince = null; S.justShed = false;\n    if (S.okSince === null) S.okSince = NOW; else if (NOW - S.okSince >= C.decay) S.streak = 0;\n}\n\nif (S.mode !== 'ACTIVE') {\n    for (let i = 0; i < 4; i++) switchOff(i);\n    S.pending = 0;\n} else {\n    if (S.lockoutAt !== null && NOW - S.lockoutAt >= C.backoff) S.lockoutAt = null;\n    for (let i = 0; i < 4; i++) if (S.on[i] && !S.want[i]) switchOff(i);\n    let pick = -1;\n    for (let i = 0; i < 4; i++) if (S.want[i] && !S.on[i] && (pick < 0 || C.rank[i] < C.rank[pick])) pick = i;\n    S.pending = pick >= 0 ? 1 : 0;\n    if (pick >= 0) {\n        const staggerOk = S.lastStart === null || NOW - S.lastStart >= C.stagger;\n        const restOk = S.offAt[pick] === null || NOW - S.offAt[pick] >= C.minOff;\n        if (staggerOk && restOk && v >= C.startMin && S.lockoutAt === null) {\n            S.on[pick] = 1; S.lastStart = NOW; S.pending = 0;\n            for (let i = 0; i < 4; i++) if (S.want[i] && !S.on[i]) S.pending = 1;\n        }\n    }\n}\n\n// ---------- publish (on change or every 1 s) ----------\nconst sig = [S.on.join(''), S.mode, S.railName, S.pending, S.brown].join('|');\ncontext.set('S', S);\nif (sig === S.lastSig && NOW - S.lastPub < 1000) return null;\nS.lastSig = sig; S.lastPub = NOW; context.set('S', S);\nconst r2 = Math.round(v * 100) / 100;\nreturn { topic: 'rover/power/status', payload: {\n    mode: S.mode, mode_id: S.mode === 'ACTIVE' ? 0 : (S.mode === 'SLEEP' ? 1 : 2),\n    rail_v: r2, battery_v: r2, rail: S.railName, ch: S.on.slice(), want: S.want.slice(),\n    pending: S.pending, brownouts: S.brown, fault: S.fault, uptime_s: Math.round((NOW - S.t0) / 1000) } };\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 480,
+    "y": 900,
+    "wires": [
+      [
+        "pm_route"
+      ]
+    ]
+  },
+  {
+    "id": "pm_dbg",
+    "type": "debug",
+    "z": "pm_tab",
+    "name": "status (debug)",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 380,
+    "y": 120,
+    "wires": []
+  }
+]
