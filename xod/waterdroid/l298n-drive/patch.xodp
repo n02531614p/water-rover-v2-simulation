@@ -1,0 +1,128 @@
+{
+  "description": "Issue #9 4WD skid-steer drive on the L298N (left motor pair = channel A, right pair = B). L/R = -1..1 per side, latched on UPD (dashboard D-pad: forward 1/1, reverse -1/-1, left -1/1, right 1/-1, stop 0/0). Slew-limited, minimum duty, 0.6 s dead-man. INH = inhibit (pumps / e-stop). IN1-IN4 -> digital-write, ENA/ENB (0-1) -> pwm-write.",
+  "nodes": [
+    {
+      "id": "in00",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "label": "L",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in01",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 102,
+        "y": 0
+      },
+      "label": "R",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in02",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 204,
+        "y": 0
+      },
+      "label": "UPD",
+      "boundLiterals": {
+        "__out__": "Never"
+      }
+    },
+    {
+      "id": "in03",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 306,
+        "y": 0
+      },
+      "label": "INH",
+      "boundLiterals": {
+        "__out__": "False"
+      }
+    },
+    {
+      "id": "in04",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 408,
+        "y": 0
+      },
+      "label": "TOUT",
+      "boundLiterals": {
+        "__out__": "0.6"
+      },
+      "description": "dead-man seconds (0 = off)"
+    },
+    {
+      "id": "impl",
+      "type": "xod/patch-nodes/not-implemented-in-xod",
+      "position": {
+        "x": 0,
+        "y": 153
+      }
+    },
+    {
+      "id": "out00",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 0,
+        "y": 306
+      },
+      "label": "IN1"
+    },
+    {
+      "id": "out01",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 102,
+        "y": 306
+      },
+      "label": "IN2"
+    },
+    {
+      "id": "out02",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 204,
+        "y": 306
+      },
+      "label": "IN3"
+    },
+    {
+      "id": "out03",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 306,
+        "y": 306
+      },
+      "label": "IN4"
+    },
+    {
+      "id": "out04",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 408,
+        "y": 306
+      },
+      "label": "ENA"
+    },
+    {
+      "id": "out05",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 510,
+        "y": 306
+      },
+      "label": "ENB"
+    }
+  ]
+}

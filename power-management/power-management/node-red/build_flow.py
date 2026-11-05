@@ -45,7 +45,7 @@ button("pm_btn_reset","Reset latch","RESET EMERGENCY LATCH","reset","#f0ad4e","#
 add({"id":"pm_cmd_out","type":"mqtt out","z":TAB,"name":"rover/power/cmd  + req/N","topic":"","qos":"0","retain":"false","respTopic":"","contentType":"","userProps":"","correl":"","expiry":"","broker":BROKER,"x":420,"y":560,"wires":[]})
 
 # --- manual load requests ---
-names=["CH1 Intake pump","CH2 Left motor","CH3 Right motor","CH4 Aux pump"]
+names=["CH1 Intake pump","CH2 Alum dosing pump","CH3 Chlorine pump","CH4 Delivery pump"]
 for i,nm in enumerate(names,1):
     add({"id":"pm_sw%d"%i,"type":"ui_switch","z":TAB,"name":nm,"label":"Request "+nm,"tooltip":"","group":G_LOAD,"order":1+i,"width":6,"height":1,"passthru":False,"decouple":"false","topic":"rover/power/req/%d"%i,"topicType":"str","style":"","onvalue":"1","onvalueType":"str","onicon":"","oncolor":"","offvalue":"0","offvalueType":"str","officon":"","offcolor":"","animate":False,"className":"","x":150,"y":700+40*(i-1),"wires":[["pm_cmd_out","pm_sim"]]})
 

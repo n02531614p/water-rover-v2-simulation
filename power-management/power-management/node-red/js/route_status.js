@@ -5,7 +5,7 @@ if (typeof s === 'string') {
 }
 if (!s || typeof s !== 'object' || s.rail_v === undefined) return null;
 
-const NAMES = ['CH1 Intake pump', 'CH2 Left motor', 'CH3 Right motor', 'CH4 Aux pump'];
+const NAMES = ['CH1 Intake pump', 'CH2 Alum dosing pump', 'CH3 Chlorine pump', 'CH4 Delivery pump'];
 const v = Number(s.rail_v);
 const prev = context.get('prev') || {};
 context.set('prev', { rail: s.rail, mode: s.mode, brownouts: s.brownouts });

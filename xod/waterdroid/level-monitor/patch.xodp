@@ -1,0 +1,121 @@
+{
+  "description": "Issue #5 Stage 2 filtration column monitor. S1/S2/S3 = tank levels in % (multiply the 0-1 output of xod/common-hardware/analog-sensor by 100 after calibration). ALLW=false pauses the intake (column overflow with 90/50 % hysteresis, Stage 3 full, manual pause). HLTH: 0 HEALTHY 1 CLOGGING 2 OVERFLOW 3 SOURCE_LOW 4 TANK_FULL 5 MANUAL_PAUSE.",
+  "nodes": [
+    {
+      "id": "in00",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "label": "S1",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in01",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 102,
+        "y": 0
+      },
+      "label": "S2",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in02",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 204,
+        "y": 0
+      },
+      "label": "S3",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in03",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 306,
+        "y": 0
+      },
+      "label": "INON",
+      "boundLiterals": {
+        "__out__": "False"
+      },
+      "description": "intake pump running"
+    },
+    {
+      "id": "in04",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 408,
+        "y": 0
+      },
+      "label": "PAUS",
+      "boundLiterals": {
+        "__out__": "False"
+      },
+      "description": "manual pause from dashboard"
+    },
+    {
+      "id": "impl",
+      "type": "xod/patch-nodes/not-implemented-in-xod",
+      "position": {
+        "x": 0,
+        "y": 153
+      }
+    },
+    {
+      "id": "out00",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 0,
+        "y": 306
+      },
+      "label": "ALLW"
+    },
+    {
+      "id": "out01",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 102,
+        "y": 306
+      },
+      "label": "HLTH"
+    },
+    {
+      "id": "out02",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 204,
+        "y": 306
+      },
+      "label": "OVF"
+    },
+    {
+      "id": "out03",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 306,
+        "y": 306
+      },
+      "label": "CLOG"
+    },
+    {
+      "id": "out04",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 408,
+        "y": 306
+      },
+      "label": "FLOW",
+      "description": "Stage 3 rise %/s"
+    }
+  ]
+}

@@ -157,5 +157,216 @@
                 "river_pump_controller"
             ]
         ]
+    },
+    {
+        "id": "wd_broker",
+        "type": "mqtt-broker",
+        "name": "Rover broker",
+        "broker": "localhost",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "intake_ui_tab",
+        "type": "ui_tab",
+        "name": "Water Intake",
+        "icon": "water_drop",
+        "order": 8,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "intake_ui_group",
+        "type": "ui_group",
+        "name": "Raw water intake",
+        "tab": "intake_ui_tab",
+        "order": 1,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "intake_cmd_out",
+        "type": "mqtt out",
+        "z": "river_tank_tab",
+        "name": "rover/intake/cmd",
+        "topic": "rover/intake/cmd",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "wd_broker",
+        "x": 700,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "intake_btn_start",
+        "type": "ui_button",
+        "z": "river_tank_tab",
+        "name": "Manual Water Intake",
+        "group": "intake_ui_group",
+        "order": 1,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "Manual Water Intake",
+        "tooltip": "",
+        "color": "#ffffff",
+        "bgcolor": "#2980b9",
+        "className": "",
+        "icon": "",
+        "payload": "start",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 160,
+        "y": 400,
+        "wires": [
+            [
+                "intake_cmd_out"
+            ]
+        ]
+    },
+    {
+        "id": "intake_btn_stop",
+        "type": "ui_button",
+        "z": "river_tank_tab",
+        "name": "Stop intake",
+        "group": "intake_ui_group",
+        "order": 2,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "Stop intake",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "stop",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 160,
+        "y": 440,
+        "wires": [
+            [
+                "intake_cmd_out"
+            ]
+        ]
+    },
+    {
+        "id": "intake_status_in",
+        "type": "mqtt in",
+        "z": "river_tank_tab",
+        "name": "rover/intake/status",
+        "topic": "rover/intake/status",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "wd_broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 500,
+        "wires": [
+            [
+                "intake_status_fmt"
+            ]
+        ]
+    },
+    {
+        "id": "intake_status_fmt",
+        "type": "function",
+        "z": "river_tank_tab",
+        "name": "Fill status",
+        "func": "const s = msg.payload || {};\nreturn [{payload: Number(s.level_pct || 0)},\n        {payload: (s.pump ? 'PUMP ON' : 'pump off') + ' . ' + (s.state || '') + (s.fault ? ' . FAULT ' + s.fault : '')}];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 500,
+        "wires": [
+            [
+                "intake_fill_gauge"
+            ],
+            [
+                "intake_status_txt"
+            ]
+        ]
+    },
+    {
+        "id": "intake_fill_gauge",
+        "type": "ui_gauge",
+        "z": "river_tank_tab",
+        "name": "Stage 1 fill",
+        "group": "intake_ui_group",
+        "order": 3,
+        "width": 3,
+        "height": 3,
+        "gtype": "gage",
+        "title": "Stage 1 fill",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 100,
+        "colors": [
+            "#e6a23c",
+            "#3498db",
+            "#2ecc71"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 700,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "intake_status_txt",
+        "type": "ui_text",
+        "z": "river_tank_tab",
+        "group": "intake_ui_group",
+        "order": 4,
+        "width": 6,
+        "height": 1,
+        "name": "Intake",
+        "label": "Intake",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "className": "",
+        "x": 700,
+        "y": 520,
+        "wires": []
     }
 ]

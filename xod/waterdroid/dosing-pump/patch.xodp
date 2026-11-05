@@ -1,0 +1,125 @@
+{
+  "description": "Issue #3 peristaltic dosing pump (alum or chlorine): DOSE injects ML millilitres by running the pump for ML / RATE seconds (2 s = 2 mL at 1 mL/s). Only real relay-ON time (RON) counts. TOT = total injected mL for the dashboard.",
+  "nodes": [
+    {
+      "id": "in00",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "label": "DOSE",
+      "boundLiterals": {
+        "__out__": "Never"
+      }
+    },
+    {
+      "id": "in01",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 102,
+        "y": 0
+      },
+      "label": "ML",
+      "boundLiterals": {
+        "__out__": "2"
+      }
+    },
+    {
+      "id": "in02",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 204,
+        "y": 0
+      },
+      "label": "ABRT",
+      "boundLiterals": {
+        "__out__": "Never"
+      }
+    },
+    {
+      "id": "in03",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 306,
+        "y": 0
+      },
+      "label": "RATE",
+      "boundLiterals": {
+        "__out__": "1"
+      },
+      "description": "pump mL/s (calibrate)"
+    },
+    {
+      "id": "in04",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 408,
+        "y": 0
+      },
+      "label": "MAX",
+      "boundLiterals": {
+        "__out__": "10"
+      },
+      "description": "max mL per dose"
+    },
+    {
+      "id": "in05",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 510,
+        "y": 0
+      },
+      "label": "RON",
+      "boundLiterals": {
+        "__out__": "False"
+      },
+      "description": "relay actually ON"
+    },
+    {
+      "id": "impl",
+      "type": "xod/patch-nodes/not-implemented-in-xod",
+      "position": {
+        "x": 0,
+        "y": 153
+      }
+    },
+    {
+      "id": "out00",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 0,
+        "y": 306
+      },
+      "label": "WANT"
+    },
+    {
+      "id": "out01",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 102,
+        "y": 306
+      },
+      "label": "BUSY"
+    },
+    {
+      "id": "out02",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 204,
+        "y": 306
+      },
+      "label": "TOT",
+      "description": "total mL injected"
+    },
+    {
+      "id": "out03",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 306,
+        "y": 306
+      },
+      "label": "DONE"
+    }
+  ]
+}

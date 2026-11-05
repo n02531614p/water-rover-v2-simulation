@@ -25,7 +25,8 @@
         "y": 100,
         "wires": [
             [
-                "teleop-output"
+                "teleop-output",
+                "teleop-mqtt"
             ]
         ]
     },
@@ -48,7 +49,8 @@
         "y": 160,
         "wires": [
             [
-                "teleop-output"
+                "teleop-output",
+                "teleop-mqtt"
             ]
         ]
     },
@@ -71,7 +73,8 @@
         "y": 220,
         "wires": [
             [
-                "teleop-output"
+                "teleop-output",
+                "teleop-mqtt"
             ]
         ]
     },
@@ -94,7 +97,8 @@
         "y": 280,
         "wires": [
             [
-                "teleop-output"
+                "teleop-output",
+                "teleop-mqtt"
             ]
         ]
     },
@@ -117,7 +121,8 @@
         "y": 340,
         "wires": [
             [
-                "teleop-output"
+                "teleop-output",
+                "teleop-mqtt"
             ]
         ]
     },
@@ -134,6 +139,72 @@
         "targetType": "msg",
         "x": 500,
         "y": 220,
+        "wires": []
+    },
+    {
+        "id": "wd_broker",
+        "type": "mqtt-broker",
+        "name": "Rover broker",
+        "broker": "localhost",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "teleop-ui-tab",
+        "type": "ui_tab",
+        "name": "Rover Teleop",
+        "icon": "gamepad",
+        "order": 6,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "teleop-group",
+        "type": "ui_group",
+        "name": "D-pad (each press ~0.6 s)",
+        "tab": "teleop-ui-tab",
+        "order": 1,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "teleop-mqtt",
+        "type": "mqtt out",
+        "z": "teleop-flow",
+        "name": "rover/drive/cmd",
+        "topic": "rover/drive/cmd",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "wd_broker",
+        "x": 520,
+        "y": 200,
         "wires": []
     }
 ]

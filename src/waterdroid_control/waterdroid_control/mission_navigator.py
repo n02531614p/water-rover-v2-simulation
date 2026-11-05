@@ -1,9 +1,9 @@
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 import math
-import time
 
 class MissionNavigator(Node):
     def __init__(self):
@@ -16,15 +16,15 @@ class MissionNavigator(Node):
         self.yaw = 0.0
         self.odom_received = False
         
-        # Exact world locations: River at 9.5m
-        # OUTSIDE_SWING (7.2, -1.0) routes the rover cleanly around Home 3 without clipping its radius
+        # Waypoints for worlds/v2_village.sdf (wheel odometry; see mission_navigator_gt
+        # for the ground-truth version with pumps / dosing / arm actions).
+        # River bank at x=10, offload bays at (6,3), (6,-3), (-3,-3).
         self.waypoints = [
-            {"name": "RIVER_INTAKE", "x": 9.5, "y": 0.0, "wait": 3.0, "thresh": 0.25, "action": "Collecting Raw Water"},
-            {"name": "BAY_1_HOME1", "x": 6.0, "y": 2.0, "wait": 3.0, "thresh": 0.18, "action": "Offloading to Home 1"},
-            {"name": "BAY_2_HOME2", "x": 6.0, "y": -2.0, "wait": 3.0, "thresh": 0.18, "action": "Offloading to Home 2"},
-            {"name": "OUTSIDE_SWING", "x": 7.2, "y": -1.0, "wait": 0.0, "thresh": 0.20, "action": "Swinging outside Home 3"},
-            {"name": "BAY_3_HOME3", "x": 6.0, "y": 0.0, "wait": 3.0, "thresh": 0.15, "action": "Offloading to Home 3"},
-            {"name": "RETURN_PLANT", "x": 0.0, "y": 0.0, "wait": 2.0, "thresh": 0.25, "action": "Docked at Plant Base"}
+            {"name": "RIVER_INTAKE", "x": 9.5, "y": 0.0, "wait": 5.0, "thresh": 0.25, "action": "Collecting Raw Water"},
+            {"name": "BAY_1_HOME1", "x": 6.0, "y": 3.0, "wait": 5.0, "thresh": 0.30, "action": "Offloading to Home 1"},
+            {"name": "BAY_2_HOME2", "x": 6.0, "y": -3.0, "wait": 5.0, "thresh": 0.30, "action": "Offloading to Home 2"},
+            {"name": "BAY_3_HOME3", "x": -3.0, "y": -3.5, "wait": 5.0, "thresh": 0.30, "action": "Offloading to Home 3"},
+            {"name": "RETURN_PLANT", "x": 0.0, "y": 0.0, "wait": 2.0, "thresh": 0.30, "action": "Docked at Plant Base"}
         ]
         self.current_wp_idx = 0
         self.start_wait_time = None
@@ -48,7 +48,9 @@ class MissionNavigator(Node):
         
         if self.current_wp_idx >= len(self.waypoints):
             self.cmd_pub.publish(cmd)
-            self.get_logger().info("FULL MISSION COMPLETE!")
+            if not getattr(self, "_done_logged", False):
+                self.get_logger().info("FULL MISSION COMPLETE!")
+                self._done_logged = True
             return
 
         target = self.waypoints[self.current_wp_idx]
@@ -77,11 +79,11 @@ class MissionNavigator(Node):
                 return
 
             if self.start_wait_time is None:
-                self.start_wait_time = time.time()
-                self.get_logger().info(f"STATUS: Arrived at {target["name"]} - {target["action"]}")
+                self.start_wait_time = self.get_clock().now().nanoseconds / 1e9
+                self.get_logger().info(f"STATUS: Arrived at {target['name']} - {target['action']}")
             
-            if time.time() - self.start_wait_time >= target["wait"]:
-                self.get_logger().info(f"STATUS: Completed {target["name"]}. Moving to next destination...")
+            if self.get_clock().now().nanoseconds / 1e9 - self.start_wait_time >= target["wait"]:
+                self.get_logger().info(f"STATUS: Completed {target['name']}. Moving to next destination...")
                 self.current_wp_idx += 1
                 self.start_wait_time = None
 
@@ -90,9 +92,14 @@ class MissionNavigator(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = MissionNavigator()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 if __name__ == "__main__":
     main()

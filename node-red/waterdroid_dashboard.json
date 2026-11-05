@@ -1,0 +1,2572 @@
+[
+  {
+    "id": "wd_tab",
+    "type": "tab",
+    "label": "Water Rover v2 - Central Dashboard (Issue #12)",
+    "disabled": false,
+    "info": "Central SCADA for the Water Rover v2. Every subsystem team has its own dashboard tab.\nTopic map: docs/TOPICS.md. Works with the ESP32 firmware or with the Gazebo sim (ros2 launch waterdroid_bringup simulation.launch.py mqtt:=true)."
+  },
+  {
+    "id": "wd_broker",
+    "type": "mqtt-broker",
+    "name": "Rover broker",
+    "broker": "localhost",
+    "port": "1883",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": "",
+    "willMsg": {},
+    "userProps": "",
+    "sessionExpiry": ""
+  },
+  {
+    "id": "wd_t_mission",
+    "type": "ui_tab",
+    "name": "Mission",
+    "icon": "dashboard",
+    "order": 1,
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "wd_t_water",
+    "type": "ui_tab",
+    "name": "Water train",
+    "icon": "opacity",
+    "order": 2,
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "wd_t_arm",
+    "type": "ui_tab",
+    "name": "Arm & Delivery",
+    "icon": "pan_tool",
+    "order": 3,
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "wd_t_drive",
+    "type": "ui_tab",
+    "name": "Drive & Map",
+    "icon": "directions_car",
+    "order": 4,
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "wd_t_power",
+    "type": "ui_tab",
+    "name": "Power",
+    "icon": "battery_charging_full",
+    "order": 5,
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "wd_g_estop",
+    "type": "ui_group",
+    "name": "System E-STOP",
+    "tab": "wd_t_mission",
+    "order": 1,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "wd_g_state",
+    "type": "ui_group",
+    "name": "Master System State (#11)",
+    "tab": "wd_t_mission",
+    "order": 2,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "wd_g_log",
+    "type": "ui_group",
+    "name": "Mission log",
+    "tab": "wd_t_mission",
+    "order": 3,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "wd_g_intake",
+    "type": "ui_group",
+    "name": "Intake (#1)",
+    "tab": "wd_t_water",
+    "order": 1,
+    "disp": true,
+    "width": "4",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "wd_g_filter",
+    "type": "ui_group",
+    "name": "Filtration (#5)",
+    "tab": "wd_t_water",
+    "order": 2,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "wd_g_dose",
+    "type": "ui_group",
+    "name": "Chemical dosing (#3)",
+    "tab": "wd_t_water",
+    "order": 3,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "wd_g_arm",
+    "type": "ui_group",
+    "name": "Delivery arm (#6)",
+    "tab": "wd_t_arm",
+    "order": 1,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "wd_g_deliv",
+    "type": "ui_group",
+    "name": "Clean water delivery (#8)",
+    "tab": "wd_t_arm",
+    "order": 2,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "wd_g_drive",
+    "type": "ui_group",
+    "name": "Teleoperation D-pad (#9)",
+    "tab": "wd_t_drive",
+    "order": 1,
+    "disp": true,
+    "width": "4",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "wd_g_map",
+    "type": "ui_group",
+    "name": "Position & waypoints (#7)",
+    "tab": "wd_t_drive",
+    "order": 2,
+    "disp": true,
+    "width": "8",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "wd_g_power",
+    "type": "ui_group",
+    "name": "Power bank & mode (#10)",
+    "tab": "wd_t_power",
+    "order": 1,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "wd_estop_out",
+    "type": "mqtt out",
+    "z": "wd_tab",
+    "name": "rover/estop",
+    "topic": "rover/estop",
+    "qos": "0",
+    "retain": "true",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "wd_broker",
+    "x": 850,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "wd_btn_estop",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "EMERGENCY STOP",
+    "group": "wd_g_estop",
+    "order": 1,
+    "width": 6,
+    "height": 1,
+    "passthru": false,
+    "label": "EMERGENCY STOP",
+    "tooltip": "",
+    "color": "#ffffff",
+    "bgcolor": "#c0392b",
+    "className": "",
+    "icon": "report",
+    "payload": "1",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 120,
+    "wires": [
+      [
+        "wd_estop_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_estop_rst",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Release E-STOP",
+    "group": "wd_g_estop",
+    "order": 2,
+    "width": 6,
+    "height": 1,
+    "passthru": false,
+    "label": "Release E-STOP",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "lock_open",
+    "payload": "0",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 160,
+    "wires": [
+      [
+        "wd_estop_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_estop_in",
+    "type": "mqtt in",
+    "z": "wd_tab",
+    "name": "rover/estop",
+    "topic": "rover/estop",
+    "qos": "0",
+    "datatype": "utf8",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 200,
+    "wires": [
+      [
+        "wd_estop_fmt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_estop_fmt",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "E-stop badge",
+    "func": "const on = String(msg.payload) === '1';\nmsg.payload = on ? '<div style=\"background:#c0392b;color:#fff;padding:10px;border-radius:8px;text-align:center;font-weight:bold\">E-STOP ACTIVE - all pumps and motors off</div>'\n                 : '<div style=\"background:#27ae60;color:#fff;padding:10px;border-radius:8px;text-align:center\">System armed</div>';\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 240,
+    "wires": [
+      [
+        "wd_estop_badge"
+      ]
+    ]
+  },
+  {
+    "id": "wd_estop_badge",
+    "type": "ui_template",
+    "z": "wd_tab",
+    "group": "wd_g_estop",
+    "name": "E-stop state",
+    "order": 3,
+    "width": 6,
+    "height": 1,
+    "format": "<div ng-bind-html=\"msg.payload\"></div>",
+    "storeOutMessages": true,
+    "fwdInMessages": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 620,
+    "y": 280,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "wd_online_in",
+    "type": "mqtt in",
+    "z": "wd_tab",
+    "name": "rover/online",
+    "topic": "rover/online",
+    "qos": "0",
+    "datatype": "utf8",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 320,
+    "wires": [
+      [
+        "wd_online_fmt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_online_fmt",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "Rover online",
+    "func": "msg.payload = String(msg.payload) === '1' ? 'ONLINE' : 'OFFLINE';\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 360,
+    "wires": [
+      [
+        "wd_online_txt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_online_txt",
+    "type": "ui_text",
+    "z": "wd_tab",
+    "group": "wd_g_estop",
+    "order": 4,
+    "width": 6,
+    "height": 1,
+    "name": "Rover link",
+    "label": "Rover link",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 400,
+    "wires": []
+  },
+  {
+    "id": "wd_mission_out",
+    "type": "mqtt out",
+    "z": "wd_tab",
+    "name": "rover/mission/cmd",
+    "topic": "rover/mission/cmd",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "wd_broker",
+    "x": 850,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "wd_btn_m0",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Start mission",
+    "group": "wd_g_state",
+    "order": 3,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Start mission",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "play_arrow",
+    "payload": "start",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 120,
+    "wires": [
+      [
+        "wd_mission_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_m1",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Pause",
+    "group": "wd_g_state",
+    "order": 4,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Pause",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "pause",
+    "payload": "pause",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 160,
+    "wires": [
+      [
+        "wd_mission_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_m2",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Resume",
+    "group": "wd_g_state",
+    "order": 5,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Resume",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "play_circle_outline",
+    "payload": "resume",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 200,
+    "wires": [
+      [
+        "wd_mission_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_m3",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Abort / home",
+    "group": "wd_g_state",
+    "order": 6,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Abort / home",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "home",
+    "payload": "abort",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 240,
+    "wires": [
+      [
+        "wd_mission_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_a0",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Arrived: river",
+    "group": "wd_g_state",
+    "order": 7,
+    "width": 2,
+    "height": 1,
+    "passthru": false,
+    "label": "Arrived: river",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "",
+    "payload": "arrived_river",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 280,
+    "wires": [
+      [
+        "wd_mission_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_a1",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Arrived: homestead",
+    "group": "wd_g_state",
+    "order": 8,
+    "width": 2,
+    "height": 1,
+    "passthru": false,
+    "label": "Arrived: homestead",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "",
+    "payload": "arrived_home",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 320,
+    "wires": [
+      [
+        "wd_mission_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_a2",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Arrived: depot",
+    "group": "wd_g_state",
+    "order": 9,
+    "width": 2,
+    "height": 1,
+    "passthru": false,
+    "label": "Arrived: depot",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "",
+    "payload": "arrived_depot",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 360,
+    "wires": [
+      [
+        "wd_mission_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_state_in",
+    "type": "mqtt in",
+    "z": "wd_tab",
+    "name": "rover/state",
+    "topic": "rover/state",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 400,
+    "wires": [
+      [
+        "wd_state_fmt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_state_fmt",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "State readout",
+    "func": "const s = msg.payload || {};\nconst pretty = String(s.state || 'UNKNOWN');\nreturn [{payload: pretty}, {payload: s.state_id}, {payload: s.battery_v}];",
+    "outputs": 3,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 440,
+    "wires": [
+      [
+        "wd_state_txt"
+      ],
+      [
+        "wd_stateid_txt"
+      ],
+      [
+        "wd_batt_gauge"
+      ]
+    ]
+  },
+  {
+    "id": "wd_state_txt",
+    "type": "ui_text",
+    "z": "wd_tab",
+    "group": "wd_g_state",
+    "order": 1,
+    "width": 6,
+    "height": 1,
+    "name": "State",
+    "label": "State",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "id": "wd_stateid_txt",
+    "type": "ui_text",
+    "z": "wd_tab",
+    "group": "wd_g_state",
+    "order": 2,
+    "width": 6,
+    "height": 1,
+    "name": "State id (0 idle . 1 river . 2 intake/dose . 3 homestead . 4 deliver . 5 e-stop)",
+    "label": "State id (0 idle . 1 river . 2 intake/dose . 3 homestead . 4 deliver . 5 e-stop)",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 520,
+    "wires": []
+  },
+  {
+    "id": "wd_batt_gauge",
+    "type": "ui_gauge",
+    "z": "wd_tab",
+    "name": "5 V rail",
+    "group": "wd_g_power",
+    "order": 1,
+    "width": 3,
+    "height": 3,
+    "gtype": "gage",
+    "title": "5 V rail",
+    "label": "V",
+    "format": "{{value}}",
+    "min": 3.5,
+    "max": 5.5,
+    "colors": [
+      "#ca3838",
+      "#e6a23c",
+      "#52c41a"
+    ],
+    "seg1": "4.5",
+    "seg2": "4.75",
+    "diff": false,
+    "className": "",
+    "x": 620,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "id": "wd_tel_in",
+    "type": "mqtt in",
+    "z": "wd_tab",
+    "name": "rover/telemetry",
+    "topic": "rover/telemetry",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 80,
+    "wires": [
+      [
+        "wd_tel_csv",
+        "wd_tel_last"
+      ]
+    ]
+  },
+  {
+    "id": "wd_tel_csv",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "Telemetry -> CSV line",
+    "func": "const t = msg.payload || {};\nconst cols = ['state','state_id','battery_v','s1','s2','s3','arm','alum_ml','chlorine_ml','delivered_ml','health','estop'];\nlet line = new Date().toISOString() + ',' + cols.map(c => t[c] !== undefined ? (typeof t[c] === 'object' ? JSON.stringify(t[c]).replace(/,/g,';') : t[c]) : '').join(',');\nif (!context.get('header')) { context.set('header', true); node.send({payload: 'time,' + cols.join(',')}); }\nmsg.payload = line;\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 120,
+    "wires": [
+      [
+        "wd_tel_file"
+      ]
+    ]
+  },
+  {
+    "id": "wd_tel_file",
+    "type": "file",
+    "z": "wd_tab",
+    "name": "Mission log CSV",
+    "filename": "rover_mission_log.csv",
+    "filenameType": "str",
+    "appendNewline": true,
+    "createDir": true,
+    "overwriteFile": "false",
+    "encoding": "none",
+    "x": 620,
+    "y": 160,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "wd_tel_last",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "Last frame",
+    "func": "const t = msg.payload || {};\nmsg.payload = `${new Date().toLocaleTimeString()} - ${t.state || ''} - S1 ${t.s1 ?? '-'}% S3 ${t.s3 ?? '-'}% - delivered ${t.delivered_ml ?? 0} mL`;\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 200,
+    "wires": [
+      [
+        "wd_tel_txt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_tel_txt",
+    "type": "ui_text",
+    "z": "wd_tab",
+    "group": "wd_g_log",
+    "order": 1,
+    "width": 6,
+    "height": 1,
+    "name": "Last telemetry",
+    "label": "Last telemetry",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 240,
+    "wires": []
+  },
+  {
+    "id": "wd_log_note",
+    "type": "comment",
+    "z": "wd_tab",
+    "name": "Log file: ~/.node-red/rover_mission_log.csv",
+    "info": "One CSV row per telemetry frame (1 Hz).",
+    "x": 850,
+    "y": 280,
+    "wires": []
+  },
+  {
+    "id": "wd_intake_out",
+    "type": "mqtt out",
+    "z": "wd_tab",
+    "name": "rover/intake/cmd",
+    "topic": "rover/intake/cmd",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "wd_broker",
+    "x": 850,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "wd_btn_in_start",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Manual Water Intake",
+    "group": "wd_g_intake",
+    "order": 1,
+    "width": 4,
+    "height": 1,
+    "passthru": false,
+    "label": "Manual Water Intake",
+    "tooltip": "",
+    "color": "#ffffff",
+    "bgcolor": "#2980b9",
+    "className": "",
+    "icon": "water_drop",
+    "payload": "start",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 120,
+    "wires": [
+      [
+        "wd_intake_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_in_stop",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Stop",
+    "group": "wd_g_intake",
+    "order": 2,
+    "width": 2,
+    "height": 1,
+    "passthru": false,
+    "label": "Stop",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "",
+    "payload": "stop",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 160,
+    "wires": [
+      [
+        "wd_intake_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_in_rst",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Reset fault",
+    "group": "wd_g_intake",
+    "order": 3,
+    "width": 2,
+    "height": 1,
+    "passthru": false,
+    "label": "Reset fault",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "",
+    "payload": "reset",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 200,
+    "wires": [
+      [
+        "wd_intake_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_intake_in",
+    "type": "mqtt in",
+    "z": "wd_tab",
+    "name": "rover/intake/status",
+    "topic": "rover/intake/status",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 240,
+    "wires": [
+      [
+        "wd_intake_fmt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_intake_fmt",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "Intake status",
+    "func": "const s = msg.payload || {};\nreturn [{payload: Number(s.level_pct || 0)}, {payload: (s.pump ? 'PUMP ON' : 'pump off') + ' . ' + (s.state || '') + (s.fault ? ' . FAULT ' + s.fault : '')}];",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 280,
+    "wires": [
+      [
+        "wd_intake_gauge"
+      ],
+      [
+        "wd_intake_txt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_intake_gauge",
+    "type": "ui_gauge",
+    "z": "wd_tab",
+    "name": "Stage 1 fill",
+    "group": "wd_g_intake",
+    "order": 4,
+    "width": 4,
+    "height": 3,
+    "gtype": "gage",
+    "title": "Stage 1 fill",
+    "label": "%",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 100,
+    "colors": [
+      "#e6a23c",
+      "#3498db",
+      "#2ecc71"
+    ],
+    "seg1": "20",
+    "seg2": "90",
+    "diff": false,
+    "className": "",
+    "x": 620,
+    "y": 320,
+    "wires": []
+  },
+  {
+    "id": "wd_intake_txt",
+    "type": "ui_text",
+    "z": "wd_tab",
+    "group": "wd_g_intake",
+    "order": 5,
+    "width": 4,
+    "height": 1,
+    "name": "Intake",
+    "label": "Intake",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 360,
+    "wires": []
+  },
+  {
+    "id": "wd_filter_out",
+    "type": "mqtt out",
+    "z": "wd_tab",
+    "name": "rover/filtration/cmd",
+    "topic": "rover/filtration/cmd",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "wd_broker",
+    "x": 850,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "wd_filter_in",
+    "type": "mqtt in",
+    "z": "wd_tab",
+    "name": "rover/filtration/status",
+    "topic": "rover/filtration/status",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 120,
+    "wires": [
+      [
+        "wd_filter_fmt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_filter_fmt",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "Filtration status",
+    "func": "const d = msg.payload || {};\nreturn [{payload: d.s1}, {payload: d.s2}, {payload: d.s3}, {payload: d}];",
+    "outputs": 4,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 160,
+    "wires": [
+      [
+        "wd_g_s1"
+      ],
+      [
+        "wd_g_s2"
+      ],
+      [
+        "wd_g_s3"
+      ],
+      [
+        "wd_filter_badge"
+      ]
+    ]
+  },
+  {
+    "id": "wd_g_s1",
+    "type": "ui_gauge",
+    "z": "wd_tab",
+    "name": "Stage 1 raw",
+    "group": "wd_g_filter",
+    "order": 1,
+    "width": 2,
+    "height": 3,
+    "gtype": "gage",
+    "title": "Stage 1 raw",
+    "label": "%",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 100,
+    "colors": [
+      "#ca3838",
+      "#e6a23c",
+      "#52c41a"
+    ],
+    "seg1": "10",
+    "seg2": "90",
+    "diff": false,
+    "className": "",
+    "x": 620,
+    "y": 200,
+    "wires": []
+  },
+  {
+    "id": "wd_g_s2",
+    "type": "ui_gauge",
+    "z": "wd_tab",
+    "name": "Stage 2 column",
+    "group": "wd_g_filter",
+    "order": 2,
+    "width": 2,
+    "height": 3,
+    "gtype": "gage",
+    "title": "Stage 2 column",
+    "label": "%",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 100,
+    "colors": [
+      "#52c41a",
+      "#e6a23c",
+      "#ca3838"
+    ],
+    "seg1": "70",
+    "seg2": "90",
+    "diff": false,
+    "className": "",
+    "x": 620,
+    "y": 240,
+    "wires": []
+  },
+  {
+    "id": "wd_g_s3",
+    "type": "ui_gauge",
+    "z": "wd_tab",
+    "name": "Stage 3 clean",
+    "group": "wd_g_filter",
+    "order": 3,
+    "width": 2,
+    "height": 3,
+    "gtype": "gage",
+    "title": "Stage 3 clean",
+    "label": "%",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 100,
+    "colors": [
+      "#ca3838",
+      "#e6a23c",
+      "#52c41a"
+    ],
+    "seg1": "10",
+    "seg2": "95",
+    "diff": false,
+    "className": "",
+    "x": 620,
+    "y": 280,
+    "wires": []
+  },
+  {
+    "id": "wd_filter_badge",
+    "type": "ui_template",
+    "z": "wd_tab",
+    "group": "wd_g_filter",
+    "name": "Health badge",
+    "order": 4,
+    "width": 6,
+    "height": 1,
+    "format": "<div style=\"padding:10px;border-radius:10px;text-align:center;font-weight:bold;color:#fff;background:{{ {HEALTHY:'#2ecc71',CLOGGING:'#e67e22',OVERFLOW:'#e74c3c',SOURCE_LOW:'#f1c40f',TANK_FULL:'#3498db',MANUAL_PAUSE:'#7f8c8d'}[msg.payload.health] || '#999' }}\">Filtration: {{msg.payload.health}} . intake {{msg.payload.intake ? 'ON' : 'off'}}</div>",
+    "storeOutMessages": true,
+    "fwdInMessages": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 620,
+    "y": 320,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "wd_btn_f_pause",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Pause intake",
+    "group": "wd_g_filter",
+    "order": 5,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Pause intake",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "",
+    "payload": "pause",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 360,
+    "wires": [
+      [
+        "wd_filter_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_f_auto",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Auto",
+    "group": "wd_g_filter",
+    "order": 6,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Auto",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "",
+    "payload": "auto",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 400,
+    "wires": [
+      [
+        "wd_filter_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_dose_out",
+    "type": "mqtt out",
+    "z": "wd_tab",
+    "name": "rover/dosing/cmd",
+    "topic": "rover/dosing/cmd",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "wd_broker",
+    "x": 850,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "wd_num_alum",
+    "type": "ui_numeric",
+    "z": "wd_tab",
+    "name": "Alum mL",
+    "label": "Alum mL",
+    "tooltip": "",
+    "group": "wd_g_dose",
+    "order": 1,
+    "width": 3,
+    "height": 1,
+    "wrap": false,
+    "passthru": true,
+    "topic": "alum",
+    "topicType": "str",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 10,
+    "step": 0.5,
+    "className": "",
+    "x": 160,
+    "y": 120,
+    "wires": [
+      [
+        "wd_dose_alum_fmt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_dose_alum_fmt",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "store alum mL",
+    "func": "flow.set('alum_ml', Number(msg.payload));\nreturn null;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 160,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "wd_btn_dose_alum",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Dose alum",
+    "group": "wd_g_dose",
+    "order": 2,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Dose alum",
+    "tooltip": "",
+    "color": "#ffffff",
+    "bgcolor": "#8e44ad",
+    "className": "",
+    "icon": "",
+    "payload": "alum",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 200,
+    "wires": [
+      [
+        "wd_dose_build"
+      ]
+    ]
+  },
+  {
+    "id": "wd_num_cl",
+    "type": "ui_numeric",
+    "z": "wd_tab",
+    "name": "Chlorine mL",
+    "label": "Chlorine mL",
+    "tooltip": "",
+    "group": "wd_g_dose",
+    "order": 3,
+    "width": 3,
+    "height": 1,
+    "wrap": false,
+    "passthru": true,
+    "topic": "chlorine",
+    "topicType": "str",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 5,
+    "step": 0.1,
+    "className": "",
+    "x": 160,
+    "y": 240,
+    "wires": [
+      [
+        "wd_dose_cl_fmt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_dose_cl_fmt",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "store chlorine mL",
+    "func": "flow.set('chlorine_ml', Number(msg.payload));\nreturn null;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 280,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "wd_btn_dose_cl",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Dose chlorine",
+    "group": "wd_g_dose",
+    "order": 4,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Dose chlorine",
+    "tooltip": "",
+    "color": "#ffffff",
+    "bgcolor": "#16a085",
+    "className": "",
+    "icon": "",
+    "payload": "chlorine",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 320,
+    "wires": [
+      [
+        "wd_dose_build"
+      ]
+    ]
+  },
+  {
+    "id": "wd_dose_build",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "Build dose command",
+    "func": "const pump = msg.payload;\nconst ml = pump === 'alum' ? (flow.get('alum_ml') ?? 3) : (flow.get('chlorine_ml') ?? 0.6);\nmsg.payload = JSON.stringify({pump: pump, ml: ml});\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 360,
+    "wires": [
+      [
+        "wd_dose_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_dose_stop",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Stop dosing",
+    "group": "wd_g_dose",
+    "order": 5,
+    "width": 6,
+    "height": 1,
+    "passthru": false,
+    "label": "Stop dosing",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "",
+    "payload": "stop",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 400,
+    "wires": [
+      [
+        "wd_dose_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_dose_in",
+    "type": "mqtt in",
+    "z": "wd_tab",
+    "name": "rover/dosing/status",
+    "topic": "rover/dosing/status",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 440,
+    "wires": [
+      [
+        "wd_dose_fmt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_dose_fmt",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "Dosing totals",
+    "func": "const s = msg.payload || {};\nreturn [{payload: `${Number(s.alum_total_ml||0).toFixed(2)} mL ${s.alum_on ? '(dosing)' : ''}`},\n        {payload: `${Number(s.chlorine_total_ml||0).toFixed(2)} mL ${s.chlorine_on ? '(dosing)' : ''}`},\n        {payload: Number(s.alum_stock_ml||0)}, {payload: Number(s.chlorine_stock_ml||0)}];",
+    "outputs": 4,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 480,
+    "wires": [
+      [
+        "wd_alum_tot"
+      ],
+      [
+        "wd_cl_tot"
+      ],
+      [
+        "wd_alum_stock"
+      ],
+      [
+        "wd_cl_stock"
+      ]
+    ]
+  },
+  {
+    "id": "wd_alum_tot",
+    "type": "ui_text",
+    "z": "wd_tab",
+    "group": "wd_g_dose",
+    "order": 6,
+    "width": 6,
+    "height": 1,
+    "name": "Total alum injected",
+    "label": "Total alum injected",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 520,
+    "wires": []
+  },
+  {
+    "id": "wd_cl_tot",
+    "type": "ui_text",
+    "z": "wd_tab",
+    "group": "wd_g_dose",
+    "order": 7,
+    "width": 6,
+    "height": 1,
+    "name": "Total chlorine injected",
+    "label": "Total chlorine injected",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "id": "wd_alum_stock",
+    "type": "ui_gauge",
+    "z": "wd_tab",
+    "name": "Alum stock",
+    "group": "wd_g_dose",
+    "order": 8,
+    "width": 3,
+    "height": 3,
+    "gtype": "gage",
+    "title": "Alum stock",
+    "label": "mL",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 250,
+    "colors": [
+      "#ca3838",
+      "#e6a23c",
+      "#52c41a"
+    ],
+    "seg1": "25",
+    "seg2": "75",
+    "diff": false,
+    "className": "",
+    "x": 620,
+    "y": 600,
+    "wires": []
+  },
+  {
+    "id": "wd_cl_stock",
+    "type": "ui_gauge",
+    "z": "wd_tab",
+    "name": "Chlorine stock",
+    "group": "wd_g_dose",
+    "order": 9,
+    "width": 3,
+    "height": 3,
+    "gtype": "gage",
+    "title": "Chlorine stock",
+    "label": "mL",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 250,
+    "colors": [
+      "#ca3838",
+      "#e6a23c",
+      "#52c41a"
+    ],
+    "seg1": "25",
+    "seg2": "75",
+    "diff": false,
+    "className": "",
+    "x": 620,
+    "y": 640,
+    "wires": []
+  },
+  {
+    "id": "wd_arm_out",
+    "type": "mqtt out",
+    "z": "wd_tab",
+    "name": "rover/arm/cmd",
+    "topic": "rover/arm/cmd",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "wd_broker",
+    "x": 850,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "wd_btn_ext",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Extend Arm",
+    "group": "wd_g_arm",
+    "order": 1,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Extend Arm",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "call_made",
+    "payload": "EXTEND",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 120,
+    "wires": [
+      [
+        "wd_arm_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_ret",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Retract Arm",
+    "group": "wd_g_arm",
+    "order": 2,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Retract Arm",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "call_received",
+    "payload": "RETRACT",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 160,
+    "wires": [
+      [
+        "wd_arm_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_arm_slider",
+    "type": "ui_slider",
+    "z": "wd_tab",
+    "name": "Arm angle (0 stow - 90 deploy)",
+    "label": "Arm angle (0 stow - 90 deploy)",
+    "tooltip": "",
+    "group": "wd_g_arm",
+    "order": 3,
+    "width": 6,
+    "height": 1,
+    "passthru": false,
+    "outs": "end",
+    "topic": "angle",
+    "topicType": "str",
+    "min": 0,
+    "max": 90,
+    "step": 1,
+    "className": "",
+    "x": 160,
+    "y": 200,
+    "wires": [
+      [
+        "wd_arm_angle"
+      ]
+    ]
+  },
+  {
+    "id": "wd_arm_angle",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "ANGLE:n",
+    "func": "let a = Math.max(0, Math.min(90, Math.round(Number(msg.payload))));\nif (!Number.isFinite(a)) return null;\nmsg.payload = 'ANGLE:' + a;\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 240,
+    "wires": [
+      [
+        "wd_arm_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_arm_in",
+    "type": "mqtt in",
+    "z": "wd_tab",
+    "name": "rover/arm/status",
+    "topic": "rover/arm/status",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 280,
+    "wires": [
+      [
+        "wd_arm_fmt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_arm_fmt",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "Arm status",
+    "func": "const s = msg.payload || {};\nreturn [{payload: Number(s.angle||0)}, {payload: s.deployed ? 'DEPLOYED' : (s.stowed ? 'STOWED' : (s.moving ? 'MOVING' : 'HOLD'))}];",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 320,
+    "wires": [
+      [
+        "wd_arm_gauge"
+      ],
+      [
+        "wd_arm_txt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_arm_gauge",
+    "type": "ui_gauge",
+    "z": "wd_tab",
+    "name": "Arm angle",
+    "group": "wd_g_arm",
+    "order": 4,
+    "width": 3,
+    "height": 3,
+    "gtype": "gage",
+    "title": "Arm angle",
+    "label": "deg",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 90,
+    "colors": [
+      "#7f8c8d",
+      "#e6a23c",
+      "#2ecc71"
+    ],
+    "seg1": "30",
+    "seg2": "80",
+    "diff": false,
+    "className": "",
+    "x": 620,
+    "y": 360,
+    "wires": []
+  },
+  {
+    "id": "wd_arm_txt",
+    "type": "ui_text",
+    "z": "wd_tab",
+    "group": "wd_g_arm",
+    "order": 5,
+    "width": 3,
+    "height": 1,
+    "name": "Arm",
+    "label": "Arm",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 400,
+    "wires": []
+  },
+  {
+    "id": "wd_deliv_out",
+    "type": "mqtt out",
+    "z": "wd_tab",
+    "name": "rover/delivery/cmd",
+    "topic": "rover/delivery/cmd",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "wd_broker",
+    "x": 850,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "wd_num_deliv",
+    "type": "ui_numeric",
+    "z": "wd_tab",
+    "name": "Volume mL",
+    "label": "Volume mL",
+    "tooltip": "",
+    "group": "wd_g_deliv",
+    "order": 1,
+    "width": 3,
+    "height": 1,
+    "wrap": false,
+    "passthru": true,
+    "topic": "ml",
+    "topicType": "str",
+    "format": "{{value}}",
+    "min": 50,
+    "max": 1000,
+    "step": 50,
+    "className": "",
+    "x": 160,
+    "y": 120,
+    "wires": [
+      [
+        "wd_deliv_store"
+      ]
+    ]
+  },
+  {
+    "id": "wd_deliv_store",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "store volume",
+    "func": "flow.set('deliv_ml', Number(msg.payload));\nreturn null;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 160,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "wd_btn_deliv",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Deliver",
+    "group": "wd_g_deliv",
+    "order": 2,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Deliver",
+    "tooltip": "",
+    "color": "#ffffff",
+    "bgcolor": "#2980b9",
+    "className": "",
+    "icon": "",
+    "payload": "go",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 200,
+    "wires": [
+      [
+        "wd_deliv_build"
+      ]
+    ]
+  },
+  {
+    "id": "wd_deliv_build",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "Build delivery command",
+    "func": "msg.payload = JSON.stringify({ml: flow.get('deliv_ml') ?? 300});\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 240,
+    "wires": [
+      [
+        "wd_deliv_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_deliv_stop",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Stop delivery",
+    "group": "wd_g_deliv",
+    "order": 3,
+    "width": 6,
+    "height": 1,
+    "passthru": false,
+    "label": "Stop delivery",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "",
+    "payload": "stop",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 280,
+    "wires": [
+      [
+        "wd_deliv_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_deliv_in",
+    "type": "mqtt in",
+    "z": "wd_tab",
+    "name": "rover/delivery/status",
+    "topic": "rover/delivery/status",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 320,
+    "wires": [
+      [
+        "wd_deliv_fmt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_deliv_fmt",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "Delivery status",
+    "func": "const s = msg.payload || {};\nreturn [{payload: Number(s.clean_ml||0)}, {payload: `${s.deliveries||0} deliveries . ${Number(s.delivered_total_ml||0).toFixed(0)} mL total . ${s.state || (s.pump ? 'PUMPING' : 'idle')}${s.reason ? ' (' + s.reason + ')' : ''}`}];",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 360,
+    "wires": [
+      [
+        "wd_clean_gauge"
+      ],
+      [
+        "wd_deliv_txt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_clean_gauge",
+    "type": "ui_gauge",
+    "z": "wd_tab",
+    "name": "Clean water on board",
+    "group": "wd_g_deliv",
+    "order": 4,
+    "width": 3,
+    "height": 3,
+    "gtype": "gage",
+    "title": "Clean water on board",
+    "label": "mL",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 1000,
+    "colors": [
+      "#ca3838",
+      "#e6a23c",
+      "#52c41a"
+    ],
+    "seg1": "100",
+    "seg2": "300",
+    "diff": false,
+    "className": "",
+    "x": 620,
+    "y": 400,
+    "wires": []
+  },
+  {
+    "id": "wd_deliv_txt",
+    "type": "ui_text",
+    "z": "wd_tab",
+    "group": "wd_g_deliv",
+    "order": 5,
+    "width": 6,
+    "height": 1,
+    "name": "Delivery",
+    "label": "Delivery",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 440,
+    "wires": []
+  },
+  {
+    "id": "wd_deliv_note",
+    "type": "comment",
+    "z": "wd_tab",
+    "name": "Delivery pump only runs with the arm deployed",
+    "info": "Interlock in firmware (DeliveryController) and in the sim (water_processor).",
+    "x": 850,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "id": "wd_drive_out",
+    "type": "mqtt out",
+    "z": "wd_tab",
+    "name": "rover/drive/cmd",
+    "topic": "rover/drive/cmd",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "wd_broker",
+    "x": 850,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "wd_sp0",
+    "type": "ui_spacer",
+    "z": "wd_tab",
+    "name": "spacer",
+    "group": "wd_g_drive",
+    "order": 1,
+    "width": 1,
+    "height": 1,
+    "className": ""
+  },
+  {
+    "id": "wd_btn_d1",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Forward",
+    "group": "wd_g_drive",
+    "order": 2,
+    "width": 2,
+    "height": 1,
+    "passthru": false,
+    "label": "Forward",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "arrow_upward",
+    "payload": "forward",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 120,
+    "wires": [
+      [
+        "wd_drive_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_sp2",
+    "type": "ui_spacer",
+    "z": "wd_tab",
+    "name": "spacer",
+    "group": "wd_g_drive",
+    "order": 3,
+    "width": 1,
+    "height": 1,
+    "className": ""
+  },
+  {
+    "id": "wd_btn_d3",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Left",
+    "group": "wd_g_drive",
+    "order": 4,
+    "width": 1,
+    "height": 1,
+    "passthru": false,
+    "label": "Left",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "rotate_left",
+    "payload": "left",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 160,
+    "wires": [
+      [
+        "wd_drive_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_d4",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Stop",
+    "group": "wd_g_drive",
+    "order": 5,
+    "width": 2,
+    "height": 1,
+    "passthru": false,
+    "label": "Stop",
+    "tooltip": "",
+    "color": "#ffffff",
+    "bgcolor": "#c0392b",
+    "className": "",
+    "icon": "stop",
+    "payload": "stop",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 200,
+    "wires": [
+      [
+        "wd_drive_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_d5",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Right",
+    "group": "wd_g_drive",
+    "order": 6,
+    "width": 1,
+    "height": 1,
+    "passthru": false,
+    "label": "Right",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "rotate_right",
+    "payload": "right",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 240,
+    "wires": [
+      [
+        "wd_drive_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_sp6",
+    "type": "ui_spacer",
+    "z": "wd_tab",
+    "name": "spacer",
+    "group": "wd_g_drive",
+    "order": 7,
+    "width": 1,
+    "height": 1,
+    "className": ""
+  },
+  {
+    "id": "wd_btn_d7",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Reverse",
+    "group": "wd_g_drive",
+    "order": 8,
+    "width": 2,
+    "height": 1,
+    "passthru": false,
+    "label": "Reverse",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "arrow_downward",
+    "payload": "reverse",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 280,
+    "wires": [
+      [
+        "wd_drive_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_sp8",
+    "type": "ui_spacer",
+    "z": "wd_tab",
+    "name": "spacer",
+    "group": "wd_g_drive",
+    "order": 9,
+    "width": 1,
+    "height": 1,
+    "className": ""
+  },
+  {
+    "id": "wd_drive_note",
+    "type": "comment",
+    "z": "wd_tab",
+    "name": "Each press moves ~0.6 s (dead-man)",
+    "info": "Drive is refused while pumps run or during a mission leg - pause the mission first.",
+    "x": 850,
+    "y": 320,
+    "wires": []
+  },
+  {
+    "id": "wd_drive_in",
+    "type": "mqtt in",
+    "z": "wd_tab",
+    "name": "rover/drive/status",
+    "topic": "rover/drive/status",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 360,
+    "wires": [
+      [
+        "wd_drive_fmt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_drive_fmt",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "Drive status",
+    "func": "const s = msg.payload || {};\nmsg.payload = s.inhibit ? 'INHIBITED (pumps / mission / e-stop)' : (s.left !== undefined ? `L ${s.left}  R ${s.right}` : `speed ${s.speed}`);\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 400,
+    "wires": [
+      [
+        "wd_drive_txt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_drive_txt",
+    "type": "ui_text",
+    "z": "wd_tab",
+    "group": "wd_g_drive",
+    "order": 10,
+    "width": 4,
+    "height": 1,
+    "name": "Motors",
+    "label": "Motors",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 440,
+    "wires": []
+  },
+  {
+    "id": "wd_pose_in",
+    "type": "mqtt in",
+    "z": "wd_tab",
+    "name": "rover/nav/pose",
+    "topic": "rover/nav/pose",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 80,
+    "wires": [
+      [
+        "wd_map"
+      ]
+    ]
+  },
+  {
+    "id": "wd_map",
+    "type": "ui_template",
+    "z": "wd_tab",
+    "group": "wd_g_map",
+    "name": "Village map",
+    "order": 1,
+    "width": 8,
+    "height": 8,
+    "format": "<svg viewBox=\"-6 -8 20 16\" style=\"width:100%;height:320px;background:#e8f1e4;border-radius:8px\">\n <g transform=\"scale(1,-1)\">\n  <rect x=\"10\" y=\"-8\" width=\"3\" height=\"16\" fill=\"#3a86ff\" opacity=\"0.6\"/>\n  <rect x=\"-5\" y=\"-1.5\" width=\"18\" height=\"3\" fill=\"#c9a26b\" opacity=\"0.5\"/>\n  <rect x=\"-0.4\" y=\"-0.4\" width=\"0.8\" height=\"0.8\" fill=\"#555\"/>\n  <rect x=\"5.5\" y=\"2.5\" width=\"1\" height=\"1\" fill=\"#e67e22\"/><rect x=\"5.5\" y=\"-3.5\" width=\"1\" height=\"1\" fill=\"#e67e22\"/>\n  <rect x=\"-3.5\" y=\"-3.5\" width=\"1\" height=\"1\" fill=\"#e67e22\"/>\n  <circle ng-if=\"msg.payload.target\" ng-attr-cx=\"{{msg.payload.target[0]}}\" ng-attr-cy=\"{{msg.payload.target[1]}}\" r=\"0.35\" fill=\"none\" stroke=\"#c0392b\" stroke-width=\"0.1\"/>\n  <g ng-attr-transform=\"translate({{msg.payload.x||0}},{{msg.payload.y||0}}) rotate({{(msg.payload.yaw||0)*57.2958}})\">\n   <rect x=\"-0.3\" y=\"-0.2\" width=\"0.6\" height=\"0.4\" fill=\"#2c3e50\"/><polygon points=\"0.3,0.15 0.5,0 0.3,-0.15\" fill=\"#f1c40f\"/>\n  </g>\n </g>\n</svg>\n<div style=\"font-size:12px\">x {{msg.payload.x}} m . y {{msg.payload.y}} m . target {{msg.payload.target || \"-\"}} &nbsp; <span style=\"color:#3a86ff\">river</span> . <span style=\"color:#e67e22\">offload bays</span> . depot (0,0)</div>\n<div style=\"font-size:11px;color:#888\">Live pose comes from the Gazebo sim (rover/nav/pose). On the real rover this needs the Issue #7 GPS/compass.</div>",
+    "storeOutMessages": true,
+    "fwdInMessages": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 620,
+    "y": 120,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "wd_power_out",
+    "type": "mqtt out",
+    "z": "wd_tab",
+    "name": "rover/power/cmd",
+    "topic": "rover/power/cmd",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "wd_broker",
+    "x": 850,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "wd_btn_p0",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Active",
+    "group": "wd_g_power",
+    "order": 2,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Active",
+    "tooltip": "",
+    "color": "#ffffff",
+    "bgcolor": "#27ae60",
+    "className": "",
+    "icon": "",
+    "payload": "active",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 120,
+    "wires": [
+      [
+        "wd_power_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_p1",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Sleep",
+    "group": "wd_g_power",
+    "order": 3,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Sleep",
+    "tooltip": "",
+    "color": "#ffffff",
+    "bgcolor": "#7f8c8d",
+    "className": "",
+    "icon": "",
+    "payload": "sleep",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 160,
+    "wires": [
+      [
+        "wd_power_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_p2",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Emergency shutdown",
+    "group": "wd_g_power",
+    "order": 4,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Emergency shutdown",
+    "tooltip": "",
+    "color": "#ffffff",
+    "bgcolor": "#c0392b",
+    "className": "",
+    "icon": "",
+    "payload": "emergency",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 200,
+    "wires": [
+      [
+        "wd_power_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_p3",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Reset",
+    "group": "wd_g_power",
+    "order": 5,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Reset",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "",
+    "payload": "reset",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 240,
+    "wires": [
+      [
+        "wd_power_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_power_in",
+    "type": "mqtt in",
+    "z": "wd_tab",
+    "name": "rover/power/status",
+    "topic": "rover/power/status",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 280,
+    "wires": [
+      [
+        "wd_power_fmt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_power_fmt",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "Power status",
+    "func": "const s = msg.payload || {};\nconst names = ['Intake','Alum','Chlorine','Delivery'];\nconst ch = (s.ch || []).map((on, i) => names[i] + (on ? ' ON' : ' off')).join(' . ');\nreturn [{payload: Number(s.rail_v || 0)}, {payload: `${s.mode || '?'} . rail ${s.rail || '?'}${s.fault ? ' . ' + s.fault : ''}`}, {payload: ch}];",
+    "outputs": 3,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 320,
+    "wires": [
+      [
+        "wd_batt_gauge"
+      ],
+      [
+        "wd_power_txt"
+      ],
+      [
+        "wd_relay_txt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_power_txt",
+    "type": "ui_text",
+    "z": "wd_tab",
+    "group": "wd_g_power",
+    "order": 6,
+    "width": 6,
+    "height": 1,
+    "name": "Power mode",
+    "label": "Power mode",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 360,
+    "wires": []
+  },
+  {
+    "id": "wd_relay_txt",
+    "type": "ui_text",
+    "z": "wd_tab",
+    "group": "wd_g_power",
+    "order": 7,
+    "width": 6,
+    "height": 1,
+    "name": "Relays",
+    "label": "Relays",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 400,
+    "wires": []
+  }
+]
