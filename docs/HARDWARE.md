@@ -97,6 +97,9 @@ the intake relay from GPIO26 to GPIO23; `power_management.ino` moved the relays 
 
 ## Wiring and power notes (Issue #10)
 
+Full wiring diagrams: `docs/wiring/power.svg`, `drive.svg`, `relays.svg`, `sensors.svg` (regenerate with
+`python3 docs/wiring/build_wiring.py`).
+
 ```
  Power bank USB-A #1 ──► ESP32 USB (logic only: ESP32, relay coil side via JD-VCC, level sensors)
  Flow sensor: red → 5 V, black → GND, yellow → 10k → GPIO34 → 20k → GND

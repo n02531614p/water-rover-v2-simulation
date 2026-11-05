@@ -16,7 +16,7 @@ and dispenses clean water with a servo-driven arm.
 | `node-red/` | central SCADA dashboard (#12), builders and validator | import `node-red/waterdroid_dashboard.json` |
 | `*.json`, `*.ino` (root) | team members' subsystem flows and bench-test sketches | see `docs/ISSUES.md` |
 | `webots/` | earlier Webots prototype | — |
-| `docs/` | `HARDWARE.md` (parts, pin map, wiring), `TOPICS.md` (MQTT + ROS topics), `ISSUES.md` (issue checklist) | |
+| `docs/` | `HARDWARE.md` (parts, pin map, wiring), `TOPICS.md` (MQTT + ROS topics), `ISSUES.md` (issue checklist), `wiring/` (wiring diagrams) | open `docs/wiring/*.svg` |
 
 ## Simulation (Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic)
 
