@@ -21,7 +21,7 @@ uses the numbers on this page.
 | 1 | 5 V chlorine dosing pump | #3 | relay CH3 |
 | 1 | 5 V delivery pump | #8 | relay CH4 |
 | 1 | SG90 servo + wooden delivery arm + nozzle | #6 | 0° stowed, 90° deployed |
-| 1 | Water-flow sensor (hall turbine, e.g. YF-S201 / YF-S401) | #1, #5 | on the intake line — measures the batch and detects dry-running |
+| 1 | Water-flow sensor **YF-S401** (hall turbine, 0.3-6 L/min, ~5880 pulses/L) | #1, #5 | on the intake line — measures the batch and detects dry-running |
 
 ### How the rover works without level sensors or GPS (current build)
 

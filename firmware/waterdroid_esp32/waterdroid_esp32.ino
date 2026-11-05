@@ -47,7 +47,7 @@ const char* MQTT_CLIENT = "waterdroid-esp32";
 
 // ---- Sensors fitted (Nov 2026: ONE water-flow sensor on the intake line, no level sensors) ----
 #define USE_LEVEL_SENSORS 0                    // 1 = analog level sensors on S2 (GPIO35) and S3 (GPIO36)
-const float FLOW_PULSES_PER_L = 450.0f;        // YF-S201 ~450, YF-S401 ~5880. CALIBRATE with 1 L of water
+const float FLOW_PULSES_PER_L = 5880.0f;       // YF-S401 (0.3-6 L/min) ~5880 pulses/L. CALIBRATE with 1 L of water
 const float FILTER_ML_PER_S   = 3.0f;          // gravity column throughput. CALIBRATE: time 500 mL through it
 const float BATCH_ML          = 950.0f;        // water per trip (Stage 3 holds 1000 mL)
 
@@ -423,6 +423,7 @@ void setup() {
   flow.pulsesPerLitre = FLOW_PULSES_PER_L;
   vol.filterMlPerS = vol.drainMlPerS = FILTER_ML_PER_S;
   intake.cfg.fullPct = 100.0f;                   // "full" = the flow sensor counted the batch
+  intake.cfg.maxRunMs = 180000;                  // motor-burnout cutoff (slow 5 V pumps need ~1-2 min per litre)
   intake.cfg.dryCheckMs = 4000;                  // relay ON 4 s ...
   intake.cfg.minRisePct = 1.0f;                  // ... with < 1 % of the batch counted -> DRY_RUN
   nav.speedMps = NAV_SPEED_MPS; nav.turnDegPerS = NAV_TURN_DPS;

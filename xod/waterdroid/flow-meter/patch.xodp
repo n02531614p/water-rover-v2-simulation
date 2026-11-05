@@ -1,5 +1,5 @@
 {
-  "description": "Water-flow sensor (hall turbine, YF-S201 ~450 pulses/L, YF-S401 ~5880) on the intake line. Counts pulses on PORT by interrupt. TOT = mL since boot, BAT = mL since RST (use as the intake fill), RATE = mL/s, DRY = no pulse for DRYT seconds (pump on + DRY = dry run / blocked hose).",
+  "description": "Water-flow sensor YF-S401 (hall turbine, ~5880 pulses/L, 0.3-6 L/min) on the intake line. Counts pulses on PORT by interrupt. TOT = mL since boot, BAT = mL since RST (use as the intake fill), RATE = mL/s, DRY = no pulse for DRYT seconds (pump on + DRY = dry run / blocked hose).",
   "nodes": [
     {
       "id": "in00",
@@ -22,9 +22,9 @@
       },
       "label": "PPL",
       "boundLiterals": {
-        "__out__": "450"
+        "__out__": "5880"
       },
-      "description": "pulses per litre (calibrate with 1 L)"
+      "description": "pulses per litre: YF-S401 ~5880 (calibrate with 1 L)"
     },
     {
       "id": "in02",

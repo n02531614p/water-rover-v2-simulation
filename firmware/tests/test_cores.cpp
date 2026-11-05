@@ -284,6 +284,7 @@ static void test_route() {
 static void test_full_cycle() {
   PowerSequencer seq; IntakeController in; DosingPump al, cl; DeliveryController dl;
   ServoArm arm; DriveController dr; MissionCore m; FlowMeter fl; VolumeModel vol; RouteNavigator nav;
+  fl.pulsesPerLitre = 450;
   m.cfg.contactMs = 5000; m.cfg.homesteads = nav.homes();
   vol.filterMlPerS = vol.drainMlPerS = 10;
   in.cfg.fullPct = 100; in.cfg.dryCheckMs = 4000; in.cfg.minRisePct = 1;

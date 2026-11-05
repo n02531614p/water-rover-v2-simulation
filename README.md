@@ -47,7 +47,7 @@ ros2 topic pub --once /waterdroid/estop std_msgs/Bool "data: true"
 ## Real rover
 
 1. Wire it as in `docs/HARDWARE.md` (one pin map for everything).
-2. Arduino IDE: ESP32 board package ≥ 2.0, libraries **PubSubClient** and **ESP32Servo**.
+2. Arduino IDE: step-by-step in `docs/FLASHING.md` (ESP32 board package, PubSubClient, ESP32Servo).
 3. Set Wi-Fi + broker IP at the top of `firmware/waterdroid_esp32/waterdroid_esp32.ino`, calibrate, flash.
 4. Run Mosquitto + Node-RED (with `node-red-dashboard`), import `node-red/waterdroid_dashboard.json`.
 5. Measure your route into `DEFAULT_ROUTE` and calibrate (docs/HARDWARE.md). Dashboard → Mission → **Start mission**; press **Arrived: river / homestead** at a

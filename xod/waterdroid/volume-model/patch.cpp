@@ -19,11 +19,11 @@ static inline uint32_t nc_since(uint32_t now, uint32_t t) { return now - t; }
 
 // ---------------------------------------------------------------------------
 // FlowMeter: feed it the running pulse count from the sensor's interrupt.
-//   YF-S201 ~450 pulses/L (1-30 L/min)   YF-S401 ~5880 pulses/L (0.3-6 L/min)
+//   YF-S401 ~5880 pulses/L (0.3-6 L/min, fitted)   YF-S201 ~450 pulses/L (1-30 L/min)
 //   CALIBRATE: pump exactly 1 L through it and use the pulse count.
 // ---------------------------------------------------------------------------
 struct FlowMeter {
-  float    pulsesPerLitre = 450.0f;
+  float    pulsesPerLitre = 5880.0f;   // YF-S401 (the rover's sensor)
   uint32_t rateWindowMs   = 1000;
   // outputs
   float    totalMl = 0;           // since boot

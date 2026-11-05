@@ -313,10 +313,10 @@ node {
 
 # ----------------------------------------------------------------- flow sensor (#1 / #5)
 NODES['flow-meter'] = dict(
-    desc='Water-flow sensor (hall turbine, YF-S201 ~450 pulses/L, YF-S401 ~5880) on the intake line. '
+    desc='Water-flow sensor YF-S401 (hall turbine, ~5880 pulses/L, 0.3-6 L/min) on the intake line. '
          'Counts pulses on PORT by interrupt. TOT = mL since boot, BAT = mL since RST (use as the intake '
          'fill), RATE = mL/s, DRY = no pulse for DRYT seconds (pump on + DRY = dry run / blocked hose).',
-    inputs=[('PORT', 'n', '34'), ('PPL', 'n', '450', 'pulses per litre (calibrate with 1 L)'),
+    inputs=[('PORT', 'n', '34'), ('PPL', 'n', '5880', 'pulses per litre: YF-S401 ~5880 (calibrate with 1 L)'),
             ('RST', 'p', None, 'reset the batch counter'), ('DRYT', 'n', '4')],
     outputs=[('TOT', 'n'), ('BAT', 'n'), ('RATE', 'n'), ('DRY', 'b')],
     cpp=core('nav_cores.h') + '''
