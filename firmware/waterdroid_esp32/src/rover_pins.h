@@ -25,8 +25,11 @@
 // ---- Issue #6  SG90 delivery-arm servo ----
 #define PIN_SERVO      13
 
-// ---- Issue #5  level sensors (analog, ADC1 input-only pins) ----
-#define PIN_LEVEL_S1   34   // Stage 1 raw tank
+// ---- Issue #1/#5 water-flow sensor (hall turbine, intake line) ----
+#define PIN_FLOW_SENSOR 34  // pulse output via 10k/20k divider (sensor runs on 5 V)
+
+// ---- Issue #5  OPTIONAL level sensors (analog, ADC1 input-only pins; not fitted yet) ----
+// Stage 1 is measured by the flow sensor, so only S2/S3 would need a sensor.
 #define PIN_LEVEL_S2   35   // Stage 2 filtration column
 #define PIN_LEVEL_S3   36   // Stage 3 clean tank (VP)
 

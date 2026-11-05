@@ -27,7 +27,8 @@ mkdir -p ~/water_ws && cd ~/water_ws
 git clone https://github.com/n02531614p/water-rover-v2-simulation.git src/water-rover-v2-simulation
 colcon build --symlink-install && source install/setup.bash
 
-ros2 launch waterdroid_bringup simulation.launch.py              # full autonomous mission
+ros2 launch waterdroid_bringup simulation.launch.py              # full mission, perfect position
+ros2 launch waterdroid_bringup simulation.launch.py mission:=route   # fixed route by dead reckoning, like the real rover
 ros2 launch waterdroid_bringup simulation.launch.py mqtt:=true   # + drive the Node-RED dashboard
 ros2 launch waterdroid_bringup simulation.launch.py mission:=none rviz:=true
 ros2 launch waterdroid_bringup simulation.launch.py gui:=false            # headless (no GPU / over SSH)
@@ -49,8 +50,8 @@ ros2 topic pub --once /waterdroid/estop std_msgs/Bool "data: true"
 2. Arduino IDE: ESP32 board package ≥ 2.0, libraries **PubSubClient** and **ESP32Servo**.
 3. Set Wi-Fi + broker IP at the top of `firmware/waterdroid_esp32/waterdroid_esp32.ino`, calibrate, flash.
 4. Run Mosquitto + Node-RED (with `node-red-dashboard`), import `node-red/waterdroid_dashboard.json`.
-5. Dashboard → Mission → **Start mission**; press **Arrived: river / homestead** as the rover reaches each
-   stop (until the issue #7 navigation sensors are fitted). **EMERGENCY STOP** is on every page.
+5. Measure your route into `DEFAULT_ROUTE` and calibrate (docs/HARDWARE.md). Dashboard → Mission → **Start mission**; press **Arrived: river / homestead** at a
+   stop only if the estimate drifts — the rover follows the fixed route on its own. **EMERGENCY STOP** is on every page.
 
 ## Checks
 

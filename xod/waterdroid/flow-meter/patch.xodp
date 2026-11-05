@@ -1,0 +1,99 @@
+{
+  "description": "Water-flow sensor (hall turbine, YF-S201 ~450 pulses/L, YF-S401 ~5880) on the intake line. Counts pulses on PORT by interrupt. TOT = mL since boot, BAT = mL since RST (use as the intake fill), RATE = mL/s, DRY = no pulse for DRYT seconds (pump on + DRY = dry run / blocked hose).",
+  "nodes": [
+    {
+      "id": "in00",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "label": "PORT",
+      "boundLiterals": {
+        "__out__": "34"
+      }
+    },
+    {
+      "id": "in01",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 102,
+        "y": 0
+      },
+      "label": "PPL",
+      "boundLiterals": {
+        "__out__": "450"
+      },
+      "description": "pulses per litre (calibrate with 1 L)"
+    },
+    {
+      "id": "in02",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 204,
+        "y": 0
+      },
+      "label": "RST",
+      "boundLiterals": {
+        "__out__": "Never"
+      },
+      "description": "reset the batch counter"
+    },
+    {
+      "id": "in03",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 306,
+        "y": 0
+      },
+      "label": "DRYT",
+      "boundLiterals": {
+        "__out__": "4"
+      }
+    },
+    {
+      "id": "impl",
+      "type": "xod/patch-nodes/not-implemented-in-xod",
+      "position": {
+        "x": 0,
+        "y": 153
+      }
+    },
+    {
+      "id": "out00",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 0,
+        "y": 306
+      },
+      "label": "TOT"
+    },
+    {
+      "id": "out01",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 102,
+        "y": 306
+      },
+      "label": "BAT"
+    },
+    {
+      "id": "out02",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 204,
+        "y": 306
+      },
+      "label": "RATE"
+    },
+    {
+      "id": "out03",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 306,
+        "y": 306
+      },
+      "label": "DRY"
+    }
+  ]
+}

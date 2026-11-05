@@ -311,6 +311,114 @@ node {
 }
 ''')
 
+# ----------------------------------------------------------------- flow sensor (#1 / #5)
+NODES['flow-meter'] = dict(
+    desc='Water-flow sensor (hall turbine, YF-S201 ~450 pulses/L, YF-S401 ~5880) on the intake line. '
+         'Counts pulses on PORT by interrupt. TOT = mL since boot, BAT = mL since RST (use as the intake '
+         'fill), RATE = mL/s, DRY = no pulse for DRYT seconds (pump on + DRY = dry run / blocked hose).',
+    inputs=[('PORT', 'n', '34'), ('PPL', 'n', '450', 'pulses per litre (calibrate with 1 L)'),
+            ('RST', 'p', None, 'reset the batch counter'), ('DRYT', 'n', '4')],
+    outputs=[('TOT', 'n'), ('BAT', 'n'), ('RATE', 'n'), ('DRY', 'b')],
+    cpp=core('nav_cores.h') + '''
+static volatile uint32_t wd_flowPulses = 0;
+static void wd_onFlowPulse() { wd_flowPulses++; }
+
+node {
+    FlowMeter f;
+    bool attached = false;
+    void evaluate(Context ctx) {
+        if (!attached) {
+            int port = (int)getValue<input_PORT>(ctx);
+            pinMode(port, INPUT);
+            attachInterrupt(digitalPinToInterrupt(port), wd_onFlowPulse, FALLING);
+            attached = true;
+        }
+        f.pulsesPerLitre = getValue<input_PPL>(ctx);
+        if (isInputDirty<input_RST>(ctx)) f.resetBatch();
+        uint32_t now = millis();
+        f.tick(now, wd_flowPulses);
+        emitValue<output_TOT>(ctx, f.totalMl);
+        emitValue<output_BAT>(ctx, f.batchMl);
+        emitValue<output_RATE>(ctx, f.rateMlPerS);
+        emitValue<output_DRY>(ctx, f.noFlowFor(now, (uint32_t)(getValue<input_DRYT>(ctx) * 1000)));
+        setTimeout(ctx, 50);
+    }
+}
+''')
+
+# ----------------------------------------------------------------- volume model (#5 / #8)
+NODES['volume-model'] = dict(
+    desc='Estimated tank volumes without level sensors: IN = intake mL (flow-meter TOT), AL = alum mL, '
+         'CL = chlorine mL, OUT = delivered mL (all running totals). Gravity flow Stage 1 -> column -> Stage 3 '
+         'at FILT mL/s (calibrate: time 500 mL through the column). S1/S2/S3 in % feed the level-monitor '
+         'and mission-fsm; FLTR = water still filtering.',
+    inputs=[('IN', 'n', '0'), ('AL', 'n', '0'), ('CL', 'n', '0'), ('OUT', 'n', '0'), ('FILT', 'n', '3'),
+            ('RST', 'p', None, 'tanks emptied by hand')],
+    outputs=[('S1', 'n'), ('S2', 'n'), ('S3', 'n'), ('CML', 'n', 'Stage 3 mL'), ('FLTR', 'b')],
+    cpp=core('nav_cores.h') + '''
+node {
+    VolumeModel v;
+    Number li = 0, la = 0, lc = 0, lo = 0;
+    bool first = true;
+    void evaluate(Context ctx) {
+        Number i = getValue<input_IN>(ctx), a = getValue<input_AL>(ctx), c = getValue<input_CL>(ctx), o = getValue<input_OUT>(ctx);
+        if (first || isInputDirty<input_RST>(ctx)) { v.reset(); li = i; la = a; lc = c; lo = o; first = false; }
+        v.filterMlPerS = v.drainMlPerS = getValue<input_FILT>(ctx);
+        v.addRaw(i - li + a - la); v.addClean(c - lc); v.removeClean(o - lo);
+        li = i; la = a; lc = c; lo = o;
+        v.tick(millis());
+        emitValue<output_S1>(ctx, v.rawPct());
+        emitValue<output_S2>(ctx, v.columnPct());
+        emitValue<output_S3>(ctx, v.cleanPct());
+        emitValue<output_CML>(ctx, v.cleanMl);
+        emitValue<output_FLTR>(ctx, v.filtering());
+        setTimeout(ctx, 100);
+    }
+}
+''')
+
+# ----------------------------------------------------------------- fixed route (#7)
+NODES['route-navigator'] = dict(
+    desc='Issue #7 without GPS/compass: follows the fixed route in nav_cores.h (river, reverse, 3 homesteads, '
+         'depot) by dead reckoning. GO = mission travelling (mission-fsm DRV and state is en-route). Pivot to '
+         'face the next point, then drive straight. L/R (-1..1) go to l298n-drive with UPD every evaluation. '
+         'Pulses RIV / HOM / DEP go to mission-fsm ARIV / AHOM / ADEP. SPD = m/s and TRN = deg/s at the drive '
+         'duties (calibrate on your ground). EXEC = 1 when the drive is really moving (0 while inhibited).',
+    inputs=[('GO', 'b', 'False'), ('EXEC', 'n', '1'), ('SPD', 'n', '0.3'), ('TRN', 'n', '90'),
+            ('RST', 'p', None, 'at the depot facing the river'), ('SRIV', 'p', None, 'operator: at river'),
+            ('SHOM', 'p', None, 'operator: at homestead'), ('SDEP', 'p', None, 'operator: at depot')],
+    outputs=[('L', 'n'), ('R', 'n'), ('UPD', 'p'), ('RIV', 'p'), ('HOM', 'p'), ('DEP', 'p'),
+             ('X', 'n'), ('Y', 'n'), ('YAW', 'n')],
+    cpp=core('nav_cores.h') + '''
+node {
+    RouteNavigator n;
+    void evaluate(Context ctx) {
+        n.speedMps = getValue<input_SPD>(ctx);
+        n.turnDegPerS = getValue<input_TRN>(ctx);
+        if (isInputDirty<input_RST>(ctx)) n.reset();
+        if (isInputDirty<input_SRIV>(ctx)) n.syncTo(RA_RIVER);
+        if (isInputDirty<input_SHOM>(ctx)) n.syncTo(RA_HOME);
+        if (isInputDirty<input_SDEP>(ctx)) n.syncTo(RA_DEPOT);
+        n.tick(millis(), getValue<input_EXEC>(ctx));
+        if (getValue<input_GO>(ctx)) n.go(); else n.halt();
+        if (n.event == RA_RIVER) emitValue<output_RIV>(ctx, 1);
+        if (n.event == RA_HOME) emitValue<output_HOM>(ctx, 1);
+        if (n.event == RA_DEPOT) emitValue<output_DEP>(ctx, 1);
+        n.event = RA_NONE;
+        Number l = 0, r = 0;
+        if (n.cmd == 1) { l = r = 0.784; } else if (n.cmd == -1) { l = r = -0.784; }   // = drive cruise 200/255
+        else if (n.cmd == 2) { l = -0.67; r = 0.67; } else if (n.cmd == -2) { l = 0.67; r = -0.67; }
+        emitValue<output_L>(ctx, l);
+        emitValue<output_R>(ctx, r);
+        emitValue<output_UPD>(ctx, 1);
+        emitValue<output_X>(ctx, n.x);
+        emitValue<output_Y>(ctx, n.y);
+        emitValue<output_YAW>(ctx, n.yaw);
+        setTimeout(ctx, 20);
+    }
+}
+''')
+
 
 def main():
     for name, spec in NODES.items():

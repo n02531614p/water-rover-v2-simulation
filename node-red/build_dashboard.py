@@ -117,7 +117,8 @@ group('wd_g_dose', 'wd_t_water', 'Chemical dosing (#3)', 3, 6)
 group('wd_g_arm', 'wd_t_arm', 'Delivery arm (#6)', 1)
 group('wd_g_deliv', 'wd_t_arm', 'Clean water delivery (#8)', 2)
 group('wd_g_drive', 'wd_t_drive', 'Teleoperation D-pad (#9)', 1, 4)
-group('wd_g_map', 'wd_t_drive', 'Position & waypoints (#7)', 2, 8)
+group('wd_g_map', 'wd_t_drive', 'Position & fixed route (#7)', 2, 8)
+group('wd_g_route', 'wd_t_drive', 'Fixed route (dead reckoning)', 3, 4)
 group('wd_g_power', 'wd_t_power', 'Power bank & mode (#10)', 1)
 
 # ======================================================================= E-STOP (#12)
@@ -184,9 +185,11 @@ button('wd_btn_in_rst', 'wd_g_intake', 'Reset fault', 'reset', 'str', ['wd_intak
 mqtt_in('wd_intake_in', 'rover/intake/status', ['wd_intake_fmt'], 'intake')
 func('wd_intake_fmt', 'Intake status',
      "const s = msg.payload || {};\n"
-     "return [{payload: Number(s.level_pct || 0)}, {payload: (s.pump ? 'PUMP ON' : 'pump off') + ' . ' + (s.state || '') + (s.fault ? ' . FAULT ' + s.fault : '')}];",
+     "const fill = s.target_ml ? Math.min(100, 100 * (s.batch_ml || 0) / s.target_ml) : Number(s.level_pct || 0);\n"
+     "const flowTxt = s.flow_ml_s !== undefined ? ` . ${Number(s.flow_ml_s).toFixed(1)} mL/s . ${Number(s.batch_ml||0).toFixed(0)}/${Number(s.target_ml||0).toFixed(0)} mL` : '';\n"
+     "return [{payload: Math.round(fill)}, {payload: (s.pump ? 'PUMP ON' : 'pump off') + ' . ' + (s.state || '') + flowTxt + (s.fault ? ' . FAULT ' + s.fault : '')}];",
      2, [['wd_intake_gauge'], ['wd_intake_txt']], 'intake')
-gauge('wd_intake_gauge', 'wd_g_intake', 'Stage 1 fill', '%', 0, 100, 4, 'intake', width=4, seg=('20', '90'),
+gauge('wd_intake_gauge', 'wd_g_intake', 'Batch filled (flow sensor)', '%', 0, 100, 4, 'intake', width=4, seg=('20', '90'),
       colors=['#e6a23c', '#3498db', '#2ecc71'])
 text('wd_intake_txt', 'wd_g_intake', 'Intake', 5, 'intake', width=4)
 
@@ -292,8 +295,23 @@ func('wd_drive_fmt', 'Drive status', "const s = msg.payload || {};\n"
      1, [['wd_drive_txt']], 'drive')
 text('wd_drive_txt', 'wd_g_drive', 'Motors', 10, 'drive', width=4)
 
+# ======================================================================= Fixed route (#7)
+mqtt_out('wd_nav_out', 'rover/nav/cmd', 'route')
+for i, (lbl, p, bg) in enumerate([('Auto route', 'auto', '#27ae60'), ('Manual (D-pad)', 'manual', ''),
+                                   ('Pose = depot', 'reset', ''), ('Calibrate: 5 s forward', 'calib_forward', '#2980b9'),
+                                   ('Calibrate: 5 s pivot', 'calib_turn', '#2980b9')]):
+    button(f'wd_btn_nav{i}', 'wd_g_route', lbl, p, 'str', ['wd_nav_out'], 'route', 1 + i, width=2 if i < 3 else 4, bg=bg)
+add({'id': 'wd_nav_note', 'type': 'comment', 'z': TAB, 'name': 'Calibrate: measure metres / 5 and degrees / 5',
+     'info': 'Put NAV_SPEED_MPS and NAV_TURN_DPS in waterdroid_esp32.ino. Re-calibrate on the real ground and after '
+             'charging the power bank. "Arrived" buttons on the Mission tab also re-sync the estimated position.',
+     **pos(3, 'route'), 'wires': []})
+func('wd_nav_fmt', 'Route status', "const s = msg.payload || {};\n"
+     "msg.payload = s.phase ? `${s.auto === false ? 'MANUAL' : 'AUTO'} . ${s.phase} . next ${s.next || '-'}${s.leg_left !== undefined ? ' . ' + Number(s.leg_left).toFixed(2) + ' left' : ''}` : 'simulation (ground truth)';\nreturn msg;",
+     1, [['wd_nav_txt']], 'route')
+text('wd_nav_txt', 'wd_g_route', 'Route', 7, 'route', width=4)
+
 # ======================================================================= Map (#7)
-mqtt_in('wd_pose_in', 'rover/nav/pose', ['wd_map'], 'map')
+mqtt_in('wd_pose_in', 'rover/nav/pose', ['wd_map', 'wd_nav_fmt'], 'map')
 template('wd_map', 'wd_g_map', 'Village map',
          '<svg viewBox="-6 -8 20 16" style="width:100%;height:320px;background:#e8f1e4;border-radius:8px">\n'
          ' <g transform="scale(1,-1)">\n'
@@ -302,13 +320,15 @@ template('wd_map', 'wd_g_map', 'Village map',
          '  <rect x="-0.4" y="-0.4" width="0.8" height="0.8" fill="#555"/>\n'
          '  <rect x="5.5" y="2.5" width="1" height="1" fill="#e67e22"/><rect x="5.5" y="-3.5" width="1" height="1" fill="#e67e22"/>\n'
          '  <rect x="-3.5" y="-3.5" width="1" height="1" fill="#e67e22"/>\n'
+         '  <polyline points="0,0 9.6,0 9,0 6,3 6,-3 -3,-3.5 0,0" fill="none" stroke="#7f8c8d" stroke-width="0.06" stroke-dasharray="0.3,0.2"/>\n'
          '  <circle ng-if="msg.payload.target" ng-attr-cx="{{msg.payload.target[0]}}" ng-attr-cy="{{msg.payload.target[1]}}" r="0.35" fill="none" stroke="#c0392b" stroke-width="0.1"/>\n'
          '  <g ng-attr-transform="translate({{msg.payload.x||0}},{{msg.payload.y||0}}) rotate({{(msg.payload.yaw||0)*57.2958}})">\n'
          '   <rect x="-0.3" y="-0.2" width="0.6" height="0.4" fill="#2c3e50"/><polygon points="0.3,0.15 0.5,0 0.3,-0.15" fill="#f1c40f"/>\n'
          '  </g>\n </g>\n</svg>\n'
          '<div style="font-size:12px">x {{msg.payload.x}} m . y {{msg.payload.y}} m . target {{msg.payload.target || "-"}}'
          ' &nbsp; <span style="color:#3a86ff">river</span> . <span style="color:#e67e22">offload bays</span> . depot (0,0)</div>\n'
-         '<div style="font-size:11px;color:#888">Live pose comes from the Gazebo sim (rover/nav/pose). On the real rover this needs the Issue #7 GPS/compass.</div>',
+         '<div style="font-size:11px;color:#888">Dashed line = fixed route. On the rover the position is an ESTIMATE (dead reckoning, no GPS yet) - '
+         'press the Mission tab "Arrived" buttons to re-sync it at a stop.</div>',
          1, 'map', width=8, height=8)
 
 # ======================================================================= Power (#10)

@@ -46,6 +46,9 @@ mission_navigator:
     alum_ml_per_litre: 3.0
     raw_tank_capacity_ml: 1000.0
     action_timeout_s: 60.0
+    pose_source: ground_truth          # mission:=route switches this to dead_reckoning
+    dr_speed_scale: 1.0                # dead-reckoning calibration (measured / commanded)
+    dr_turn_scale: 1.0                 # set from a 5 s pivot test, like NAV_TURN_DPS on the rover
 
 status_monitor:
   ros__parameters:

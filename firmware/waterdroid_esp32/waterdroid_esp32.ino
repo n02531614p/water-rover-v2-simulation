@@ -11,6 +11,8 @@
  *   #10 Power distribution & sequencing    src/power_core.h   PowerSequencer     all relays + rail
  *   #11 Central state machine              src/mission_core.h MissionCore        + serial bridge
  *   #12 MQTT telemetry / dashboard / E-stop (this file)
+ *   #7  Fixed route by dead reckoning     src/nav_cores.h    RouteNavigator     (no GPS / compass yet)
+ *   #1/#5 Water-flow sensor + volume model src/nav_cores.h   FlowMeter, VolumeModel (replaces level sensors)
  * Each core is pure C++ shared with the XOD nodes (xod/waterdroid) and the host tests
  * (firmware/tests), so the logic is tested off-board.
  *
@@ -20,7 +22,8 @@
  * Serial: 115200 baud, one JSON line per second {"state_id":..,"battery_v":..} for the
  *         Node-RED serial bridge; accepts {"cmd":"SET_STATE","state":1} / {"cmd":"ESTOP"}
  *         and plain lines: start | pause | resume | abort | estop | reset |
- *         arrived_river | arrived_home | arrived_depot
+ *         arrived_river | arrived_home | arrived_depot | nav_auto | nav_manual | nav_reset |
+ *         calib_forward | calib_turn
  *
  * The loop never blocks: relays, pumps and the e-stop keep working when Wi-Fi is down.
  */
@@ -33,6 +36,7 @@
 #include "src/pump_cores.h"
 #include "src/motion_cores.h"
 #include "src/mission_core.h"
+#include "src/nav_cores.h"
 
 // ============================== CONFIG ==============================
 const char* WIFI_SSID = "YOUR_WIFI";
@@ -41,10 +45,21 @@ const char* MQTT_HOST = "192.168.1.50";        // Node-RED / Mosquitto host
 const uint16_t MQTT_PORT = 1883;
 const char* MQTT_CLIENT = "waterdroid-esp32";
 
-// Level sensor calibration (raw ADC 0-4095): dry = empty, wet = full. CALIBRATE!
+// ---- Sensors fitted (Nov 2026: ONE water-flow sensor on the intake line, no level sensors) ----
+#define USE_LEVEL_SENSORS 0                    // 1 = analog level sensors on S2 (GPIO35) and S3 (GPIO36)
+const float FLOW_PULSES_PER_L = 450.0f;        // YF-S201 ~450, YF-S401 ~5880. CALIBRATE with 1 L of water
+const float FILTER_ML_PER_S   = 3.0f;          // gravity column throughput. CALIBRATE: time 500 mL through it
+const float BATCH_ML          = 950.0f;        // water per trip (Stage 3 holds 1000 mL)
+
+// ---- Fixed route, dead reckoning (no GPS / compass yet). Route points: src/nav_cores.h ----
+const float NAV_SPEED_MPS = 0.30f;             // CALIBRATE: send "calib_forward" (5 s), measure metres / 5
+const float NAV_TURN_DPS  = 90.0f;             // CALIBRATE: send "calib_turn" (5 s pivot), measure degrees / 5
+bool autoNav = true;                           // false = drive by dashboard D-pad and press "Arrived"
+
+// Level sensor calibration (only with USE_LEVEL_SENSORS): raw ADC dry = empty, wet = full
 struct Cal { int dry, wet; };
-Cal CAL_S1 = {200, 2200}, CAL_S2 = {200, 2200}, CAL_S3 = {200, 2200};
-const float CLEAN_TANK_ML = 1000.0f;           // Stage 3 capacity (for volume estimate)
+Cal CAL_S2 = {200, 2200}, CAL_S3 = {200, 2200};
+const float CLEAN_TANK_ML = 1000.0f;           // Stage 3 capacity
 
 // 5 V rail divider (rover_pins.h) and calibration
 const float R_TOP = 10000.0f, R_BOTTOM = 10000.0f, VCAL = 1.000f;
@@ -62,6 +77,11 @@ FiltrationMonitor  filt;
 ServoArm           arm;
 DriveController    drive;
 MissionCore        mission;
+FlowMeter          flow;
+VolumeModel        vol;
+RouteNavigator     nav;
+volatile uint32_t  flowPulses = 0;
+void IRAM_ATTR onFlowPulse() { flowPulses++; }
 
 Servo        servo;
 WiFiClient   wifi;
@@ -71,6 +91,9 @@ float s1 = 0, s2 = 0, s3 = 0;      // smoothed levels %
 float railV = 0; bool railValid = false;
 bool  estop = false;
 bool  atHomestead = false;         // true between arrived_home and leaving DISPENSING
+float intakeTargetMl = BATCH_ML;   // this fill (batch minus water already on board)
+float lastFlowMl = 0, lastAlumMl = 0, lastChlorMl = 0, lastDelivMl = 0;
+uint32_t calibUntil = 0; const char* calibCmd = "stop";
 uint32_t tSample = 0, tLogic = 0, tPub = 0, tNet = 0, tSerial = 0;
 String serialLine;
 
@@ -104,16 +127,33 @@ void setEstop(bool on, const char* src) {
   if (mqtt.connected()) mqtt.publish("rover/estop", on ? "1" : "0", true);
 }
 
+void startIntake() {
+  float onBoard = vol.rawMl + vol.columnMl + vol.cleanMl;
+  intakeTargetMl = BATCH_ML - onBoard;
+  if (intakeTargetMl < 0) intakeTargetMl = 0;
+  flow.resetBatch();
+  intake.start();
+}
+
 // ----- one command dispatcher for MQTT, serial and the mission -----
 void missionCommand(const String& c) {
   uint32_t now = millis();
-  if (c == "start") mission.start(now);
+  if (c == "start") { if (mission.state == MS_IDLE || mission.state == MS_COMPLETE) nav.reset(); mission.start(now); }
+  else if (c == "nav_auto") autoNav = true;
+  else if (c == "nav_manual") { autoNav = false; nav.halt(); }
+  else if (c == "nav_reset") nav.reset();                       // rover is at the depot, facing the river
+  else if (c == "calib_forward" || c == "calib_turn") {         // 5 s timed move for calibration
+    if (mission.state == MS_IDLE || mission.state == MS_PAUSED || mission.state == MS_COMPLETE) {
+      calibCmd = (c == "calib_forward") ? "forward" : "left"; calibUntil = now + 5000;
+    }
+  }
   else if (c == "pause") mission.pause(now);
   else if (c == "resume") mission.resume(now);
   else if (c == "abort" || c == "home") mission.abort(now);
-  else if (c == "arrived_river") mission.arrivedRiver(now);
-  else if (c == "arrived_home") { atHomestead = true; mission.arrivedHomestead(now); }
-  else if (c == "arrived_depot") mission.arrivedDepot(now);
+  // manual arrival = also re-sync the dead-reckoned pose to that route point
+  else if (c == "arrived_river") { nav.syncTo(RA_RIVER); mission.arrivedRiver(now); }
+  else if (c == "arrived_home") { nav.syncTo(RA_HOME); atHomestead = true; mission.arrivedHomestead(now); }
+  else if (c == "arrived_depot") { nav.syncTo(RA_DEPOT); mission.arrivedDepot(now); }
 }
 
 float jsonNumber(const String& s, const char* key, float def) {
@@ -138,7 +178,8 @@ void onMqtt(char* topic, byte* payload, unsigned int len) {
     else if (lm == "emergency" || lm == "estop") setEstop(true, "power");
     else if (lm == "reset") setEstop(false, "power");
   }
-  else if (t == "rover/intake/cmd") { if (lm == "start" || lm == "on") intake.start(); else if (lm == "reset") intake.clearFault(); else intake.stop(); }
+  else if (t == "rover/intake/cmd") { if (lm == "start" || lm == "on") startIntake(); else if (lm == "reset") intake.clearFault(); else intake.stop(); }
+  else if (t == "rover/nav/cmd") missionCommand(lm.startsWith("nav_") || lm.startsWith("calib_") ? lm : "nav_" + lm);
   else if (t == "rover/filtration/cmd") filt.manualPause = (lm == "pause");
   else if (t == "rover/dosing/cmd") {
     if (lm == "stop") { alum.abort(); chlorine.abort(); }
@@ -186,15 +227,15 @@ void controlStep() {
   in.intakeBusy = intake.want;
   in.alumBusy = alum.busy();
   in.chlorineBusy = chlorine.busy();
-  in.s1Pct = s1; in.s2Pct = s2;
+  in.s1Pct = s1; in.s2Pct = s2;           // estimated by the VolumeModel without level sensors
   in.armDeployed = arm.deployed(); in.armStowed = arm.stowed();
   in.deliveryBusy = delivery.state == DL_WAIT_ARM || delivery.state == DL_PUMPING;
-  in.cleanMl = s3 / 100.0f * CLEAN_TANK_ML;
+  in.cleanMl = vol.cleanMl;
   mission.tick(now, in);
 
   MissionActions& a = mission.act;
   if (a.stopAll) { intake.stop(); alum.abort(); chlorine.abort(); delivery.abort("mission"); }
-  if (a.startIntake) intake.start();
+  if (a.startIntake) startIntake();
   if (a.doseAlumMl > 0) alum.start(a.doseAlumMl);
   if (a.doseChlorineMl > 0) chlorine.start(a.doseChlorineMl);
   if (a.armExtend) arm.command("EXTEND");
@@ -204,11 +245,21 @@ void controlStep() {
   if (mission.state == MS_EN_ROUTE_HOMESTEAD || mission.state == MS_RETURNING || mission.state == MS_EN_ROUTE_RIVER)
     atHomestead = false;           // moving again -> no longer parked at a container
 
-  // ---- #5 filtration + #1 intake (batch = what Stage 3 can hold) ----
+  // ---- water book-keeping: flow sensor + doses + deliveries -> estimated tank volumes ----
+  flow.tick(now, flowPulses);
+  vol.addRaw(flow.totalMl - lastFlowMl);          lastFlowMl = flow.totalMl;
+  vol.addRaw(alum.totalMl - lastAlumMl);          lastAlumMl = alum.totalMl;
+  vol.addClean(chlorine.totalMl - lastChlorMl);   lastChlorMl = chlorine.totalMl;
+  vol.removeClean(delivery.totalMl - lastDelivMl); lastDelivMl = delivery.totalMl;
+  vol.tick(now);
+#if !USE_LEVEL_SENSORS
+  s1 = vol.rawPct(); s2 = vol.columnPct(); s3 = vol.cleanPct();
+#endif
+
+  // ---- #5 filtration + #1 intake: fill = flow-sensor volume, dry run = no pulses ----
   filt.tick(now, s1, s2, s3, seq.on[CH_INTAKE]);
-  bool batchFull = (s1 + s2 * 0.25f + s3) >= filt.s3FullPct;
-  if (batchFull && intake.requested) intake.stop();
-  intake.tick(now, seq.on[CH_INTAKE], s1, !filt.allowIntake || estop);
+  float fillPct = intakeTargetMl > 0 ? 100.0f * flow.batchMl / intakeTargetMl : 100.0f;
+  intake.tick(now, seq.on[CH_INTAKE], fillPct, !filt.allowIntake || estop);
 
   // ---- #3 dosing, #8 delivery ----
   alum.tick(now, seq.on[CH_ALUM]);
@@ -223,6 +274,29 @@ void controlStep() {
   seq.setWant(CH_DELIVERY, delivery.want);
   seq.tick(now, railV, railValid);
   for (uint8_t i = 0; i < PC_CHANNELS; i++) digitalWrite(RELAY_PIN[i], seq.pinLevel(i, RELAY_ACTIVE_LOW));
+
+  // ---- #7 fixed route: dead-reckoning navigator drives the travel legs ----
+  bool travelling = mission.state == MS_EN_ROUTE_RIVER || mission.state == MS_EN_ROUTE_HOMESTEAD ||
+                    mission.state == MS_RETURNING;
+  if (mission.state == MS_RETURNING)                 // abort / last leg: head straight for the depot
+    while (nav.idx < nav.n && nav.pts[nav.idx].action != RA_DEPOT) nav.idx++;
+  int8_t lastCmd = nav.cmd;
+  float duty = (abs(drive.left) + abs(drive.right)) / 2.0f;
+  float exec = lastCmd == 0 ? 0 : duty / ((lastCmd == 1 || lastCmd == -1) ? drive.cruise : drive.turn);
+  nav.tick(now, exec);
+  if (autoNav && travelling) nav.go(); else nav.halt();
+  if (nav.event != RA_NONE) {
+    if (nav.event == RA_RIVER) mission.arrivedRiver(now);
+    else if (nav.event == RA_HOME) { atHomestead = true; mission.arrivedHomestead(now); }
+    else if (nav.event == RA_DEPOT) mission.arrivedDepot(now);
+    nav.event = RA_NONE;
+  }
+  if (autoNav && travelling) {
+    static const char* NAMES[] = {"right", "reverse", "stop", "forward", "left"};   // cmd -2..2
+    drive.named(NAMES[nav.cmd + 2], now);
+  } else if ((int32_t)(calibUntil - now) > 0) {
+    drive.named(calibCmd, now);
+  }
 
   // ---- #9 drive: never together with a pump, never in e-stop ----
   bool anyPump = seq.on[0] || seq.on[1] || seq.on[2] || seq.on[3];
@@ -247,8 +321,10 @@ void publishAll() {
            st, mission.stateId(), railV, mission.stop);
   mqtt.publish("rover/state", js);
 
-  snprintf(js, sizeof(js), "{\"pump\":%s,\"state\":\"%s\",\"level_pct\":%.1f,\"run_s\":%.1f,\"fault\":\"%s\"}",
+  snprintf(js, sizeof(js), "{\"pump\":%s,\"state\":\"%s\",\"level_pct\":%.1f,\"run_s\":%.1f,\"flow_ml_s\":%.1f,"
+           "\"batch_ml\":%.0f,\"target_ml\":%.0f,\"total_ml\":%.0f,\"fault\":\"%s\"}",
            seq.on[CH_INTAKE] ? "true" : "false", IntakeController::name(intake.state), s1, intake.runMs / 1000.0f,
+           flow.rateMlPerS, flow.batchMl, intakeTargetMl, flow.totalMl,
            (intake.state == IN_FAULT_DRY || intake.state == IN_FAULT_TIMEOUT) ? IntakeController::name(intake.state) : "");
   mqtt.publish("rover/intake/status", js);
 
@@ -274,6 +350,18 @@ void publishAll() {
 
   snprintf(js, sizeof(js), "{\"left\":%d,\"right\":%d,\"inhibit\":%s}", drive.left, drive.right, drive.inhibit ? "true" : "false");
   mqtt.publish("rover/drive/status", js);
+
+  // dead-reckoned pose on the fixed route (estimate - re-synced at every manual "Arrived")
+  if (nav.idx < nav.n && nav.pts[nav.idx].action != RA_REVERSE)
+    snprintf(js, sizeof(js), "{\"x\":%.2f,\"y\":%.2f,\"yaw\":%.2f,\"target\":[%.2f,%.2f],\"next\":\"%s\","
+             "\"phase\":\"%s\",\"leg_left\":%.2f,\"point\":%u,\"auto\":%s,\"source\":\"dead_reckoning\"}",
+             nav.x, nav.y, nav.yaw, nav.pts[nav.idx].x, nav.pts[nav.idx].y, RouteNavigator::actionName(nav.pts[nav.idx].action),
+             RouteNavigator::phaseName(nav.phase), nav.legLeft, nav.idx, autoNav ? "true" : "false");
+  else
+    snprintf(js, sizeof(js), "{\"x\":%.2f,\"y\":%.2f,\"yaw\":%.2f,\"target\":null,\"phase\":\"%s\",\"point\":%u,"
+             "\"auto\":%s,\"source\":\"dead_reckoning\"}", nav.x, nav.y, nav.yaw, RouteNavigator::phaseName(nav.phase),
+             nav.idx, autoNav ? "true" : "false");
+  mqtt.publish("rover/nav/pose", js);
 
   // Same schema as power-management/power_management.ino so the Power tab works unchanged
   snprintf(js, sizeof(js),
@@ -302,7 +390,7 @@ void serviceNetwork(uint32_t now) {
   if (!mqtt.connected() && mqtt.connect(MQTT_CLIENT, nullptr, nullptr, "rover/online", 0, true, "0")) {
     const char* subs[] = {"rover/estop", "rover/mission/cmd", "rover/power/cmd", "rover/intake/cmd",
                           "rover/filtration/cmd", "rover/dosing/cmd", "rover/arm/cmd",
-                          "rover/delivery/cmd", "rover/drive/cmd"};
+                          "rover/delivery/cmd", "rover/drive/cmd", "rover/nav/cmd"};
     for (const char* s : subs) mqtt.subscribe(s);
     mqtt.publish("rover/online", "1", true);
   }
@@ -329,7 +417,20 @@ void setup() {
   chlorine.rateMlPerS = 1.0f; chlorine.maxDoseMl = 5.0f;
   delivery.flowMlPerS = 25.0f;
 
-  s1 = readLevel(PIN_LEVEL_S1, CAL_S1); s2 = readLevel(PIN_LEVEL_S2, CAL_S2); s3 = readLevel(PIN_LEVEL_S3, CAL_S3);
+  // Flow sensor (intake line) + estimated volumes, route navigator calibration
+  pinMode(PIN_FLOW_SENSOR, INPUT);               // GPIO34 has no pull-up: see docs/HARDWARE.md divider
+  attachInterrupt(digitalPinToInterrupt(PIN_FLOW_SENSOR), onFlowPulse, FALLING);
+  flow.pulsesPerLitre = FLOW_PULSES_PER_L;
+  vol.filterMlPerS = vol.drainMlPerS = FILTER_ML_PER_S;
+  intake.cfg.fullPct = 100.0f;                   // "full" = the flow sensor counted the batch
+  intake.cfg.dryCheckMs = 4000;                  // relay ON 4 s ...
+  intake.cfg.minRisePct = 1.0f;                  // ... with < 1 % of the batch counted -> DRY_RUN
+  nav.speedMps = NAV_SPEED_MPS; nav.turnDegPerS = NAV_TURN_DPS;
+  mission.cfg.homesteads = nav.homes();
+  mission.cfg.batchMl = BATCH_ML;
+#if USE_LEVEL_SENSORS
+  s2 = readLevel(PIN_LEVEL_S2, CAL_S2); s3 = readLevel(PIN_LEVEL_S3, CAL_S3);
+#endif
 
   seq.setMode(PM_ACTIVE, millis());             // boot-safe: nothing is requested yet
   WiFi.mode(WIFI_STA);
@@ -346,9 +447,12 @@ void loop() {
   if (now - tSample >= 100) {                   // 10 Hz sensors, EMA smoothing
     tSample = now;
     const float k = 0.1f;
-    s1 += k * (readLevel(PIN_LEVEL_S1, CAL_S1) - s1);
+#if USE_LEVEL_SENSORS
     s2 += k * (readLevel(PIN_LEVEL_S2, CAL_S2) - s2);
     s3 += k * (readLevel(PIN_LEVEL_S3, CAL_S3) - s3);
+#else
+    (void)k;
+#endif
     sampleRail();
   }
   if (now - tLogic >= 20) { tLogic = now; controlStep(); }

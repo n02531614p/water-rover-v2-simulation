@@ -1,0 +1,194 @@
+{
+  "description": "Issue #7 without GPS/compass: follows the fixed route in nav_cores.h (river, reverse, 3 homesteads, depot) by dead reckoning. GO = mission travelling (mission-fsm DRV and state is en-route). Pivot to face the next point, then drive straight. L/R (-1..1) go to l298n-drive with UPD every evaluation. Pulses RIV / HOM / DEP go to mission-fsm ARIV / AHOM / ADEP. SPD = m/s and TRN = deg/s at the drive duties (calibrate on your ground). EXEC = 1 when the drive is really moving (0 while inhibited).",
+  "nodes": [
+    {
+      "id": "in00",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "label": "GO",
+      "boundLiterals": {
+        "__out__": "False"
+      }
+    },
+    {
+      "id": "in01",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 102,
+        "y": 0
+      },
+      "label": "EXEC",
+      "boundLiterals": {
+        "__out__": "1"
+      }
+    },
+    {
+      "id": "in02",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 204,
+        "y": 0
+      },
+      "label": "SPD",
+      "boundLiterals": {
+        "__out__": "0.3"
+      }
+    },
+    {
+      "id": "in03",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 306,
+        "y": 0
+      },
+      "label": "TRN",
+      "boundLiterals": {
+        "__out__": "90"
+      }
+    },
+    {
+      "id": "in04",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 408,
+        "y": 0
+      },
+      "label": "RST",
+      "boundLiterals": {
+        "__out__": "Never"
+      },
+      "description": "at the depot facing the river"
+    },
+    {
+      "id": "in05",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 510,
+        "y": 0
+      },
+      "label": "SRIV",
+      "boundLiterals": {
+        "__out__": "Never"
+      },
+      "description": "operator: at river"
+    },
+    {
+      "id": "in06",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 612,
+        "y": 0
+      },
+      "label": "SHOM",
+      "boundLiterals": {
+        "__out__": "Never"
+      },
+      "description": "operator: at homestead"
+    },
+    {
+      "id": "in07",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 714,
+        "y": 0
+      },
+      "label": "SDEP",
+      "boundLiterals": {
+        "__out__": "Never"
+      },
+      "description": "operator: at depot"
+    },
+    {
+      "id": "impl",
+      "type": "xod/patch-nodes/not-implemented-in-xod",
+      "position": {
+        "x": 0,
+        "y": 153
+      }
+    },
+    {
+      "id": "out00",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 0,
+        "y": 306
+      },
+      "label": "L"
+    },
+    {
+      "id": "out01",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 102,
+        "y": 306
+      },
+      "label": "R"
+    },
+    {
+      "id": "out02",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 204,
+        "y": 306
+      },
+      "label": "UPD"
+    },
+    {
+      "id": "out03",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 306,
+        "y": 306
+      },
+      "label": "RIV"
+    },
+    {
+      "id": "out04",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 408,
+        "y": 306
+      },
+      "label": "HOM"
+    },
+    {
+      "id": "out05",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 510,
+        "y": 306
+      },
+      "label": "DEP"
+    },
+    {
+      "id": "out06",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 612,
+        "y": 306
+      },
+      "label": "X"
+    },
+    {
+      "id": "out07",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 714,
+        "y": 306
+      },
+      "label": "Y"
+    },
+    {
+      "id": "out08",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 816,
+        "y": 306
+      },
+      "label": "YAW"
+    }
+  ]
+}

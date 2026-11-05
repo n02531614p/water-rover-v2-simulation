@@ -59,6 +59,14 @@ class MissionNavigator(Node):
         self.alum_ml_per_l = p('alum_ml_per_litre', 3.0).value
         self.raw_cap_ml = p('raw_tank_capacity_ml', 1000.0).value
         self.action_timeout = p('action_timeout_s', 60.0).value
+        # 'ground_truth' = perfect pose from Gazebo; 'dead_reckoning' = like the real rover
+        # (no GPS/compass): pose integrated from the commanded /cmd_vel only, so wheel slip
+        # shows up as drift. The true pose is still logged at every stop for comparison.
+        self.pose_source = p('pose_source', 'ground_truth').value
+        # Dead-reckoning calibration, the sim twin of NAV_SPEED_MPS / NAV_TURN_DPS on the ESP32:
+        # measured speed / commanded speed (run calib, measure, divide). Skid steer slips most when pivoting.
+        self.dr_speed_scale = p('dr_speed_scale', 1.0).value
+        self.dr_turn_scale = p('dr_turn_scale', 1.0).value
 
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.proc_pub = self.create_publisher(String, '/waterdroid/cmd', 10)
@@ -84,6 +92,11 @@ class MissionNavigator(Node):
         self.bay_idx = 0
         self.mission_state = 'STATE_IDLE'
 
+        self.true_x = self.true_y = self.true_yaw = 0.0
+        self.last_twist = Twist()
+        self.dr_last = None
+        if self.pose_source == 'dead_reckoning':
+            self.create_subscription(Twist, '/cmd_vel', self._on_cmd_vel, 10)
         self.create_timer(0.02, self.control_loop)
         self.create_timer(0.5, self._publish_state)
         self.get_logger().info('=== Waterdroid 4WD mission (ground-truth odom) active ===')
@@ -100,9 +113,32 @@ class MissionNavigator(Node):
         if self.origin_x is None:
             self.origin_x, self.origin_y, self.origin_yaw = x, y, yaw
             self.get_logger().info(f'Ground-truth origin set: x={x:.2f} y={y:.2f} yaw={yaw:.2f}')
-        self.pose_x = x - self.origin_x
-        self.pose_y = y - self.origin_y
-        self.yaw = self._wrap(yaw - self.origin_yaw)
+        self.true_x = x - self.origin_x
+        self.true_y = y - self.origin_y
+        self.true_yaw = self._wrap(yaw - self.origin_yaw)
+        if self.pose_source != 'dead_reckoning':
+            self.pose_x, self.pose_y, self.yaw = self.true_x, self.true_y, self.true_yaw
+
+    def _on_cmd_vel(self, msg):
+        self.last_twist = msg
+
+    def _dead_reckon(self):
+        now = self.now()
+        if self.dr_last is not None:
+            dt = now - self.dr_last
+            v = self.last_twist.linear.x * self.dr_speed_scale
+            w = self.last_twist.angular.z * self.dr_turn_scale
+            self.yaw = self._wrap(self.yaw + w * dt)
+            self.pose_x += v * math.cos(self.yaw) * dt
+            self.pose_y += v * math.sin(self.yaw) * dt
+        self.dr_last = now
+
+    def _drift_note(self):
+        if self.pose_source != 'dead_reckoning':
+            return ''
+        err = math.hypot(self.pose_x - self.true_x, self.pose_y - self.true_y)
+        return (f' | dead-reckoned ({self.pose_x:.2f},{self.pose_y:.2f}) true ({self.true_x:.2f},'
+                f'{self.true_y:.2f}) drift {err:.2f} m')
 
     def _on_proc(self, msg):
         try:
@@ -168,6 +204,8 @@ class MissionNavigator(Node):
                     and self.bay_idx < len(BAYS) else None),
             'x': round(self.pose_x, 2), 'y': round(self.pose_y, 2), 'yaw': round(self.yaw, 2),
             'target': self._target(),
+            'pose_source': self.pose_source,
+            'true': [round(self.true_x, 2), round(self.true_y, 2)],
         })))
 
     def _target(self):
@@ -191,7 +229,14 @@ class MissionNavigator(Node):
         dist = math.hypot(dx, dy)
         err = self._wrap(math.atan2(dy, dx) - self.yaw)
         cmd = Twist()
-        if abs(err) > 0.35:
+        if self.pose_source == 'dead_reckoning':
+            # Same as the ESP32 RouteNavigator: pivot at ONE fixed rate, then drive dead straight,
+            # so the single calibrated pivot rate stays valid (blended steering slips differently).
+            if abs(err) > 0.12 and dist > 0.05:
+                cmd.angular.z = 0.6 if err > 0 else -0.6
+            else:
+                cmd.linear.x = speed
+        elif abs(err) > 0.35:
             cmd.angular.z = 1.0 if err > 0 else -1.0
         else:
             cmd.linear.x = min(speed, max(0.15, 0.5 * dist))
@@ -207,6 +252,8 @@ class MissionNavigator(Node):
         if self.origin_x is None:
             self.stop()
             return
+        if self.pose_source == 'dead_reckoning':
+            self._dead_reckon()          # also while paused, so dashboard teleop is tracked
         if self.estop:
             self.stop()
             self._set_state('STATE_EMERGENCY_STOP')
@@ -226,11 +273,12 @@ class MissionNavigator(Node):
         if self.pose_x < self.bank_x:
             cmd = Twist()
             cmd.linear.x = self.drive_speed
-            cmd.angular.z = -0.8 * self.pose_y        # hold the road centre line
+            if self.pose_source != 'dead_reckoning':
+                cmd.angular.z = -0.8 * self.pose_y    # hold the road centre line
             self.cmd_pub.publish(cmd)
         else:
             self.stop()
-            self.get_logger().info(f'Arrived at river bank x={self.pose_x:.2f}')
+            self.get_logger().info(f'Arrived at river bank x={self.pose_x:.2f}' + self._drift_note())
             self._goto('PUMP')
 
     # 2. intake pump + in-line alum dose (never while driving: brownout guard)
@@ -301,7 +349,7 @@ class MissionNavigator(Node):
         name, x, y = BAYS[self.bay_idx]
         if self.drive_towards(x, y) < self.arrive_tol + 0.15:
             self.stop()
-            self.get_logger().info(f'Arrived at {name}')
+            self.get_logger().info(f'Arrived at {name}' + self._drift_note())
             self._goto('DISPENSE')
 
     # 8. arm EXTEND -> delivery pump -> arm RETRACT
@@ -329,7 +377,7 @@ class MissionNavigator(Node):
         self._set_state('STATE_RETURNING')
         if self.drive_towards(0.0, 0.0) < 0.4:
             self.stop()
-            self.get_logger().info('=== MISSION COMPLETE: Waterdroid parked at depot ===')
+            self.get_logger().info('=== MISSION COMPLETE: Waterdroid parked at depot ===' + self._drift_note())
             self._goto('COMPLETE')
 
     def _phase_complete(self):

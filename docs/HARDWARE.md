@@ -21,16 +21,49 @@ uses the numbers on this page.
 | 1 | 5 V chlorine dosing pump | #3 | relay CH3 |
 | 1 | 5 V delivery pump | #8 | relay CH4 |
 | 1 | SG90 servo + wooden delivery arm + nozzle | #6 | 0° stowed, 90° deployed |
+| 1 | Water-flow sensor (hall turbine, e.g. YF-S201 / YF-S401) | #1, #5 | on the intake line — measures the batch and detects dry-running |
 
-### Not in the drawing but needed by the issues
+### How the rover works without level sensors or GPS (current build)
+
+* **Flow sensor instead of level sensors.** The one flow sensor sits on the intake hose between the pre-filter
+  and Stage 1. The intake stops when it has counted the batch (950 mL minus any water still on board) and
+  trips **DRY_RUN** if the pump runs 4 s without enough pulses. Stage 1 / column / Stage 3 volumes are then
+  *estimated* (`VolumeModel`): + intake, + alum, + chlorine, − delivered, with gravity filtration at a
+  calibrated mL/s. Set `USE_LEVEL_SENSORS 1` in the sketch if level sensors are added later (S2 on GPIO35,
+  S3 on GPIO36; Stage 1 stays on the flow sensor).
+* **Fixed route instead of path finding.** The route is a fixed list of coordinates in
+  `firmware/waterdroid_esp32/src/nav_cores.h` (`DEFAULT_ROUTE`): river → back off 0.6 m → homestead 1 → 2 →
+  3 → depot. The rover pivots to face the next point, then drives straight; its position is estimated from
+  how long it drove/turned (dead reckoning, `RouteNavigator`). Arrival triggers pumping / delivery
+  automatically. In Gazebo, `mission:=route` runs exactly this and logs the drift against the true position:
+  straight legs are accurate (river: 0.05 m after 9.6 m) but every pivot adds heading error, so without
+  correction the miss grows to ~0.5 m at homestead 1, ~1.4 m at homestead 2 and ~2.8 m at homestead 3.
+  So: start every trip at the same marked spot facing the river, press **Arrived** at each stop if the rover
+  is off (it snaps the estimate back), and keep the route to few turns. The single most useful add-on is a
+  cheap **compass (QMC5883L, ~US$3, I²C pins 21/22 already reserved)** — it removes the heading error that
+  causes almost all of the drift; wheel encoders fix the distance part.
+
+#### Setting up the route for your site
+
+1. Mark the depot spot and the direction the rover faces at the start (towards the river = +x).
+2. Measure each stop with a tape: x metres ahead, y metres to the left (right = negative).
+3. Edit `DEFAULT_ROUTE` (keep the `RA_REVERSE` step after the river so the hose clears the bank).
+4. Calibrate (Drive & Map tab, mission paused, rover on the real ground):
+   **Calibrate: 5 s forward** → measure metres ÷ 5 = `NAV_SPEED_MPS`;
+   **Calibrate: 5 s pivot** → measure degrees ÷ 5 = `NAV_TURN_DPS`. Repeat 3× and average; redo when the
+   ground or the power bank charge changes a lot.
+
+### Not in the drawing but needed / recommended
 
 | Part | Needed for | Why |
 |------|-----------|-----|
-| 3 × analog water-level sensors (or float switches) | #1 dry-run check, #5 overflow / clog detection, #8 "tank empty" stop | issue #5 lists "Fluid Level/Flow Sensors" but none are on the drawing |
+| 2 × analog water-level sensors (optional) | #5 column overflow, #8 Stage 3 empty | the flow sensor + volume estimate covers this now; sensors make it measured instead of estimated |
+| 10k + 20k resistors | flow sensor | divider from the sensor's 5 V pulse output to GPIO34 (3.3 V max) |
 | 2 × 10 kΩ resistors + 100 nF capacitor | #10 battery / 5 V rail meter | voltage divider into GPIO39 |
 | 4 × 1N5819 (or 1N4007) diodes | #10 | flyback protection across each pump motor |
 | 470–1000 µF electrolytic capacitor | #9/#10 | across the L298N supply, absorbs motor inrush |
-| GPS (e.g. NEO-6M), compass/IMU (QMC5883L or MPU-6050), 1–3 × HC-SR04 | #7 navigation | **not in the parts list** — the ESP32 currently has no way to know where it is; arrival at the river / homesteads comes from the dashboard buttons or the simulation until these are fitted. Pins are reserved below. |
+| Wheel encoders (LM393 slot sensor + 20-slot disc; often sold with TT motor kits) | #7 | cheapest big improvement to the fixed route: counts wheel turns instead of timing |
+| GPS (e.g. NEO-6M), compass/IMU (QMC5883L or MPU-6050), 1–3 × HC-SR04 | #7 | not available for now — the fixed route works without them; pins stay reserved below |
 
 ## ESP32 pin map (single source: `firmware/waterdroid_esp32/src/rover_pins.h`)
 
@@ -45,9 +78,9 @@ uses the numbers on this page.
 | 18 | Relay **IN3** → chlorine dosing pump | #3 |
 | 4 | Relay **IN4** → delivery pump | #8 |
 | 13 | SG90 signal (orange) | #6 |
-| 34 | Stage 1 level sensor (analog) | #1 #5 |
-| 35 | Stage 2 column level sensor (analog) | #5 |
-| 36 (VP) | Stage 3 level sensor (analog) | #5 #8 |
+| 34 | **Water-flow sensor** pulse (yellow) via 10k/20k divider | #1 #5 |
+| 35 | optional Stage 2 column level sensor (analog) | #5 |
+| 36 (VP) | optional Stage 3 level sensor (analog) | #5 #8 |
 | 39 (VN) | 5 V rail divider midpoint | #10 |
 | 2 | on-board LED (mission running / fast blink = E-STOP) | #12 |
 | 16 / 17 | reserved: GPS UART2 RX / TX | #7 |
@@ -66,6 +99,7 @@ the intake relay from GPIO26 to GPIO23; `power_management.ino` moved the relays 
 
 ```
  Power bank USB-A #1 ──► ESP32 USB (logic only: ESP32, relay coil side via JD-VCC, level sensors)
+ Flow sensor: red → 5 V, black → GND, yellow → 10k → GPIO34 → 20k → GND
  Power bank USB-A #2 ──►┬─► L298N +12V (Vs) AND L298N +5V terminal (remove the 5V-EN jumper) ─► 4 × TT motors
                         ├─► relay COM terminals ─► NO ─► pumps (+ flyback diode across each pump)
                         ├─► SG90 red (+100 µF close to the servo)
@@ -91,7 +125,9 @@ the intake relay from GPIO26 to GPIO23; `power_management.ino` moved the relays 
 
 | What | Where | How |
 |------|-------|-----|
-| Level sensors dry / wet raw values | `CAL_S1..S3` in `waterdroid_esp32.ino` | print `analogRead` with the tank empty and full |
+| Flow sensor pulses per litre | `FLOW_PULSES_PER_L` | pump exactly 1 L into a jug, read `total_ml` on the dashboard, scale |
+| Filter column throughput | `FILTER_ML_PER_S` | time how long 500 mL takes to pass the column |
+| Route speed / pivot rate | `NAV_SPEED_MPS`, `NAV_TURN_DPS` | dashboard calibrate buttons (above) |
 | Dosing pump rate (mL/s) | `alum.rateMlPerS`, `chlorine.rateMlPerS` | run 60 s into a measuring cylinder |
 | Delivery pump flow (mL/s) | `delivery.flowMlPerS` | time filling a 500 mL jug |
 | 5 V rail reading | `VCAL` | multimeter reading ÷ sketch reading |

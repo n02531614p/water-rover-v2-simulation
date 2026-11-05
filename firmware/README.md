@@ -11,6 +11,7 @@ and reused by the XOD nodes:
 | `pump_cores.h` | #1 `IntakeController`, #3 `DosingPump`, #8 `DeliveryController` |
 | `motion_cores.h` | #5 `FiltrationMonitor`, #6 `ServoArm`, #9 `DriveController` |
 | `mission_core.h` | #11 `MissionCore` state machine |
+| `nav_cores.h` | `FlowMeter` (flow sensor), `VolumeModel` (estimated tanks), `RouteNavigator` (#7 fixed route, dead reckoning) |
 
 `bash tests/run_tests.sh` runs the unit tests and syntax-checks every sketch in the repo against
 Arduino/ESP32 stubs (`tests/stubs`). Wiring and calibration: `../docs/HARDWARE.md`.

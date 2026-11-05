@@ -6,6 +6,8 @@
 #include "../waterdroid_esp32/src/pump_cores.h"
 #include "../waterdroid_esp32/src/motion_cores.h"
 #include "../waterdroid_esp32/src/mission_core.h"
+#include "../waterdroid_esp32/src/nav_cores.h"
+#include <cstdlib>
 
 static int fails = 0, checks = 0;
 #define CHECK(c) do { checks++; if (!(c)) { fails++; printf("FAIL %s:%d  %s\n", __FILE__, __LINE__, #c); } } while (0)
@@ -220,9 +222,131 @@ static void test_mission() {
   MissionCore g; g.arrivedHomestead(0); CHECK(g.state == MS_IDLE);
 }
 
+
+// ---------------- flow sensor, volume model, fixed route ----------------
+static void test_flow_volume() {
+  FlowMeter f; f.pulsesPerLitre = 450;
+  uint32_t pulses = 0, t = 0;
+  f.tick(t, pulses);
+  for (t = 20; t <= 10000; t += 20) { pulses += 3; f.tick(t, pulses); }   // 150 Hz
+  NEAR(f.totalMl, 500 * 3 * 1000.0f / 450, 1.0f);                        // 1500 pulses = 3333 mL
+  NEAR(f.rateMlPerS, 150 * 1000.0f / 450, 5.0f);
+  CHECK(!f.noFlowFor(t, 500));
+  CHECK(f.noFlowFor(t + 3000, 2000));
+  f.resetBatch(); CHECK(f.batchMl == 0 && f.totalMl > 3000);
+
+  VolumeModel v; v.filterMlPerS = v.drainMlPerS = 5;
+  v.addRaw(950); v.tick(0);
+  for (t = 100; t <= 400000; t += 100) v.tick(t);
+  NEAR(v.cleanMl, 950, 0.5f); CHECK(!v.filtering());
+  v.removeClean(2000); CHECK(v.cleanMl == 0);
+}
+
+static void drive_sim(RouteNavigator& n, uint32_t& t, int ms, float exec = 1.0f) {
+  for (int i = 0; i < ms; i += 20) { t += 20; n.tick(t, exec); }
+}
+
+static void test_route() {
+  RouteNavigator n; n.speedMps = 0.3f; n.turnDegPerS = 90;
+  CHECK(n.n == 6 && n.homes() == 3);
+  uint32_t t = 0; n.tick(t, 0);
+  n.go();
+  RouteAction seen[8]; int k = 0;
+  for (int step = 0; step < 200000 && k < 5; step++) {
+    t += 20; n.tick(t, 1.0f);
+    if (n.event != RA_NONE) { seen[k++] = n.event; n.event = RA_NONE; n.go(); }
+  }
+  CHECK(k == 5);
+  CHECK(seen[0] == RA_RIVER && seen[1] == RA_HOME && seen[2] == RA_HOME && seen[3] == RA_HOME && seen[4] == RA_DEPOT);
+  NEAR(n.x, 0, 0.08f); NEAR(n.y, 0, 0.08f);
+  CHECK(t < 400000);                                   // ~40 m of route at 0.3 m/s + pivots
+  // first leg timing: 9.6 m at 0.3 m/s = 32 s, no pivot needed
+  RouteNavigator a; uint32_t u = 0; a.tick(u, 0); a.go();
+  while (a.event == RA_NONE && u < 60000) { u += 20; a.tick(u, 1.0f); }
+  CHECK(a.event == RA_RIVER && u >= 31700 && u <= 32400);
+  // paused / inhibited (exec 0): pose must not move
+  RouteNavigator p; uint32_t w = 0; p.tick(w, 0); p.go(); drive_sim(p, w, 2000);
+  float x0 = p.x; drive_sim(p, w, 5000, 0.0f); NEAR(p.x, x0, 1e-4f);
+  // operator re-sync at a homestead
+  RouteNavigator s; CHECK(s.syncTo(RA_HOME)); CHECK(s.x == 6.0f && s.y == 3.0f && s.idx == 3 && s.phase == NV_ARRIVED);
+  // 180 degree pivot after the river: reverse leg then turn towards homestead 1
+  RouteNavigator r; uint32_t v = 0; r.tick(v, 0); r.go();
+  while (r.event == RA_NONE) { v += 20; r.tick(v, 1.0f); }
+  r.event = RA_NONE; r.go();
+  CHECK(r.phase == NV_REVERSE);
+  for (int i = 0; i < 200 && r.cmd != 2 && r.cmd != -2; i++) { v += 20; r.tick(v, 1.0f); }
+  CHECK(r.cmd == 2 || r.cmd == -2);                    // pivoting
+  NEAR(r.x, 9.0f, 0.03f);
+}
+
+// The ESP32 control step, reduced to the cores (no Arduino): proves the subsystems
+// cooperate - pumps never run while driving, route events drive the mission.
+static void test_full_cycle() {
+  PowerSequencer seq; IntakeController in; DosingPump al, cl; DeliveryController dl;
+  ServoArm arm; DriveController dr; MissionCore m; FlowMeter fl; VolumeModel vol; RouteNavigator nav;
+  m.cfg.contactMs = 5000; m.cfg.homesteads = nav.homes();
+  vol.filterMlPerS = vol.drainMlPerS = 10;
+  in.cfg.fullPct = 100; in.cfg.dryCheckMs = 4000; in.cfg.minRisePct = 1;
+  seq.setMode(PM_ACTIVE, 0);
+  uint32_t t = 0, pulses = 0; float target = 950, lf = 0, la = 0, lc = 0, ld = 0;
+  bool atHome = false; int overlap = 0, deliveries = 0;
+  m.start(0); nav.reset();
+  for (; t < 3000000 && m.state != MS_COMPLETE; t += 20) {
+    if (seq.on[0]) pulses += 1;                        // 20 mL/s at 450 pulses/L ~ 9 pulses/s -> 1 per 20 ms ~ 22 mL/s
+    MissionInputs mi; mi.intakeBusy = in.want; mi.alumBusy = al.busy(); mi.chlorineBusy = cl.busy();
+    mi.s1Pct = vol.rawPct(); mi.s2Pct = vol.columnPct(); mi.armDeployed = arm.deployed(); mi.armStowed = arm.stowed();
+    mi.deliveryBusy = dl.state == DL_WAIT_ARM || dl.state == DL_PUMPING; mi.cleanMl = vol.cleanMl;
+    m.tick(t, mi);
+    MissionActions& a = m.act;
+    if (a.startIntake) { target = 950 - (vol.rawMl + vol.columnMl + vol.cleanMl); fl.resetBatch(); in.start(); }
+    if (a.doseAlumMl > 0) al.start(a.doseAlumMl);
+    if (a.doseChlorineMl > 0) cl.start(a.doseChlorineMl);
+    if (a.armExtend) arm.command("EXTEND");
+    if (a.armRetract) arm.command("RETRACT");
+    if (a.deliverMl > 0) dl.request(a.deliverMl);
+    a.clear();
+    if (m.state == MS_EN_ROUTE_HOMESTEAD || m.state == MS_RETURNING) atHome = false;
+    fl.tick(t, pulses);
+    vol.addRaw(fl.totalMl - lf); lf = fl.totalMl; vol.addRaw(al.totalMl - la); la = al.totalMl;
+    vol.addClean(cl.totalMl - lc); lc = cl.totalMl; vol.removeClean(dl.totalMl - ld); ld = dl.totalMl;
+    vol.tick(t);
+    in.tick(t, seq.on[0], target > 0 ? 100 * fl.batchMl / target : 100, false);
+    al.tick(t, seq.on[1]); cl.tick(t, seq.on[2]);
+    uint16_t before = dl.count;
+    dl.tick(t, seq.on[3], atHome, arm.deployed(), vol.cleanPct());
+    deliveries += dl.count - before;
+    seq.setWant(0, in.want); seq.setWant(1, al.want); seq.setWant(2, cl.want); seq.setWant(3, dl.want);
+    seq.tick(t, 5.0f, true);
+    bool travelling = m.state == MS_EN_ROUTE_RIVER || m.state == MS_EN_ROUTE_HOMESTEAD || m.state == MS_RETURNING;
+    int8_t lc2 = nav.cmd; float duty = (std::abs(dr.left) + std::abs(dr.right)) / 2.0f;
+    nav.tick(t, lc2 == 0 ? 0 : duty / ((lc2 == 1 || lc2 == -1) ? dr.cruise : dr.turn));
+    if (travelling) nav.go(); else nav.halt();
+    if (nav.event == RA_RIVER) m.arrivedRiver(t);
+    if (nav.event == RA_HOME) { atHome = true; m.arrivedHomestead(t); }
+    if (nav.event == RA_DEPOT) m.arrivedDepot(t);
+    nav.event = RA_NONE;
+    static const char* NM[] = {"right", "reverse", "stop", "forward", "left"};
+    if (travelling) dr.named(NM[nav.cmd + 2], t);
+    bool anyPump = seq.on[0] || seq.on[1] || seq.on[2] || seq.on[3];
+    dr.inhibit = !m.driveAllowed || anyPump;
+    dr.tick(t);
+    if (anyPump && (dr.left || dr.right)) overlap++;
+    arm.tick(t);
+  }
+  CHECK(m.state == MS_COMPLETE);
+  CHECK(overlap == 0);                                 // never drive + pump together
+  CHECK(deliveries == 3);
+  CHECK(dl.totalMl > 900 && dl.totalMl < 960);
+  NEAR(al.totalMl, 2.85f, 0.2f);                       // 3 mL per L x 950 mL
+  NEAR(nav.x, 0, 0.1f); NEAR(nav.y, 0, 0.1f);
+  printf("full cycle: %.0f s, delivered %.0f mL in %d deliveries, alum %.2f mL, chlorine %.2f mL\n",
+         t / 1000.0, dl.totalMl, deliveries, al.totalMl, cl.totalMl);
+}
+
 int main() {
   test_intake(); test_dosing(); test_delivery(); test_filtration();
   test_arm(); test_drive(); test_power_relays(); test_mission();
+  test_flow_volume(); test_route(); test_full_cycle();
   printf("%d checks, %d failed\n", checks, fails);
   if (fails == 0) printf("ALL TESTS PASSED\n");
   return fails ? 1 : 0;
