@@ -47,9 +47,9 @@ const char* MQTT_CLIENT = "waterdroid-esp32";
 
 // ---- Sensors fitted (Nov 2026: ONE water-flow sensor on the intake line, no level sensors) ----
 #define USE_LEVEL_SENSORS 0                    // 1 = analog level sensors on S2 (GPIO35) and S3 (GPIO36)
-const float FLOW_PULSES_PER_L = 5880.0f;       // YF-S401 (0.3-6 L/min) ~5880 pulses/L. CALIBRATE with 1 L of water
+const float FLOW_PULSES_PER_L = 5880.0f;       // YF-S401 (0.3-6 L/min) ~5880 pulses/L. CALIBRATE: pump 400 mL into a jug
 const float FILTER_ML_PER_S   = 3.0f;          // gravity column throughput. CALIBRATE: time 500 mL through it
-const float BATCH_ML          = 950.0f;        // water per trip (Stage 3 holds 1000 mL)
+const float BATCH_ML          = 380.0f;        // water per trip (400 mL tanks, leave headroom)
 
 // ---- Fixed route, dead reckoning (no GPS / compass yet). Route points: src/nav_cores.h ----
 const float NAV_SPEED_MPS = 0.30f;             // CALIBRATE: send "calib_forward" (5 s), measure metres / 5
@@ -59,7 +59,7 @@ bool autoNav = true;                           // false = drive by dashboard D-p
 // Level sensor calibration (only with USE_LEVEL_SENSORS): raw ADC dry = empty, wet = full
 struct Cal { int dry, wet; };
 Cal CAL_S2 = {200, 2200}, CAL_S3 = {200, 2200};
-const float CLEAN_TANK_ML = 1000.0f;           // Stage 3 capacity
+const float CLEAN_TANK_ML = 400.0f;            // Stage 3 capacity
 
 // 5 V rail divider (rover_pins.h) and calibration
 const float R_TOP = 10000.0f, R_BOTTOM = 10000.0f, VCAL = 1.000f;
@@ -413,8 +413,8 @@ void setup() {
   servo.write(ServoArm::STOW);
 
   // Pump calibration (measure and adjust)
-  alum.rateMlPerS = 1.0f;     alum.maxDoseMl = 10.0f;
-  chlorine.rateMlPerS = 1.0f; chlorine.maxDoseMl = 5.0f;
+  alum.rateMlPerS = 1.0f;     alum.maxDoseMl = 4.0f;       // 380 mL batch needs ~1.1 mL
+  chlorine.rateMlPerS = 1.0f; chlorine.maxDoseMl = 4.0f;
   delivery.flowMlPerS = 25.0f;
 
   // Flow sensor (intake line) + estimated volumes, route navigator calibration
@@ -423,7 +423,7 @@ void setup() {
   flow.pulsesPerLitre = FLOW_PULSES_PER_L;
   vol.filterMlPerS = vol.drainMlPerS = FILTER_ML_PER_S;
   intake.cfg.fullPct = 100.0f;                   // "full" = the flow sensor counted the batch
-  intake.cfg.maxRunMs = 180000;                  // motor-burnout cutoff (slow 5 V pumps need ~1-2 min per litre)
+  intake.cfg.maxRunMs = 90000;                   // motor-burnout cutoff (a 380 mL batch takes ~20-60 s)
   intake.cfg.dryCheckMs = 4000;                  // relay ON 4 s ...
   intake.cfg.minRisePct = 1.0f;                  // ... with < 1 % of the batch counted -> DRY_RUN
   nav.speedMps = NAV_SPEED_MPS; nav.turnDegPerS = NAV_TURN_DPS;

@@ -7,7 +7,7 @@
   rover_teleop_flow.json     (#9)  buttons went to a debug node and their ui_group was missing
                                    -> group added, buttons -> MQTT rover/drive/cmd
   chemical_dosing_flow.json  (#3)  Raspberry-Pi GPIO nodes replaced by ESP32-metered doses on rover/dosing/cmd,
-                                   volumes rescaled from 200 L tanks to the real 0.5-1 L tanks, dosing panel added
+                                   volumes rescaled from 200 L tanks to the real 400 mL tanks, dosing panel added
   river_pump_flow.json       (#1)  'Manual Water Intake' button + fill gauge (rover/intake/*) added
 """
 import json
@@ -129,23 +129,23 @@ for old, new in [
         ('ratio_ml_per_L: 0.06,        // 0.06 mL Alum per Liter water (~30-60 mg/L typical)',
          'ratio_ml_per_L: 3.0,         // 1 % alum stock: 3 mL per L water (~30 mg/L)'),
         ('min_dose_threshold_L: 20,    // Trigger dose when at least 20L processed',
-         'min_dose_threshold_L: 0.5,   // rover tanks are 0.5-1 L: dose per half litre'),
-        ('fixed_timer_dose_ml: 5.0,    // Dose for pure timer trigger', 'fixed_timer_dose_ml: 1.5,    // Dose for pure timer trigger'),
-        ('max_single_dose_ml: 15.0,    // Safety ceiling per injection', 'max_single_dose_ml: 10.0,    // Safety ceiling per injection'),
+         'min_dose_threshold_L: 0.2,   // rover tanks hold 400 mL: dose per 200 mL'),
+        ('fixed_timer_dose_ml: 5.0,    // Dose for pure timer trigger', 'fixed_timer_dose_ml: 0.6,    // Dose for pure timer trigger'),
+        ('max_single_dose_ml: 15.0,    // Safety ceiling per injection', 'max_single_dose_ml: 4.0,     // Safety ceiling per injection'),
         ('current_stock_ml: 1000.0     // Reservoir level', 'current_stock_ml: 250.0      // Reservoir level'),
         ('pump_rate_ml_sec: 0.8,       // Peristaltic pump rate (e.g. 48 mL/min = 0.8 mL/s)',
          'pump_rate_ml_sec: 1.0,       // 5 V dosing pump (calibrate)'),
         ('ratio_ml_per_L: 0.005,       // 0.005 mL of 5% NaOCl per Liter (~2.5 ppm Cl2)',
-         'ratio_ml_per_L: 0.6,         // 0.35 % NaOCl stock (bleach 1:10): 0.6 mL per L (~2 mg/L)'),
-        ('fixed_timer_dose_ml: 2.0,    // Dose for pure timer trigger', 'fixed_timer_dose_ml: 0.3,    // Dose for pure timer trigger'),
-        ('max_single_dose_ml: 8.0,     // Safety ceiling per injection', 'max_single_dose_ml: 5.0,     // Safety ceiling per injection'),
+         'ratio_ml_per_L: 3.0,         // 0.07 % NaOCl stock (bleach 1:50): 3 mL per L (~2 mg/L)'),
+        ('fixed_timer_dose_ml: 2.0,    // Dose for pure timer trigger', 'fixed_timer_dose_ml: 0.6,    // Dose for pure timer trigger'),
+        ('max_single_dose_ml: 8.0,     // Safety ceiling per injection', 'max_single_dose_ml: 4.0,     // Safety ceiling per injection'),
         ('current_stock_ml: 500.0      // Reservoir level', 'current_stock_ml: 250.0      // Reservoir level'),
-        ("let config = flow.get('chem_config') || {", "let config = flow.get('chem_config_v2') || {"),
-        ("flow.set('chem_config', config);", "flow.set('chem_config_v2', config);")]:
+        ("let config = flow.get('chem_config') || {", "let config = flow.get('chem_config_v3') || {"),
+        ("flow.set('chem_config', config);", "flow.set('chem_config_v3', config);")]:
     code = code.replace(old, new)
 ctl['func'] = code
-for iid, label, vol, tot in [('inject_sim_stage1_vol', 'Simulate Stage 1 Inflow (+0.5 L)', 0.5, 1.0),
-                             ('inject_sim_stage3_vol', 'Simulate Stage 3 Inflow (+0.5 L)', 0.5, 1.0)]:
+for iid, label, vol, tot in [('inject_sim_stage1_vol', 'Simulate Stage 1 Inflow (+0.2 L)', 0.2, 0.4),
+                             ('inject_sim_stage3_vol', 'Simulate Stage 3 Inflow (+0.2 L)', 0.2, 0.4)]:
     n = get(f, iid)
     p = json.loads(n['payload'])
     p['volume_added_liters'] = vol
@@ -182,9 +182,9 @@ put(f, {'id': 'chem_ui_tab', 'type': 'ui_tab', 'name': 'Chemical Dosing', 'icon'
         'disabled': False, 'hidden': False})
 put(f, {'id': 'chem_ui_group', 'type': 'ui_group', 'name': 'Dosing control panel', 'tab': 'chem_ui_tab', 'order': 1,
         'disp': True, 'width': '6', 'collapse': False, 'className': ''})
-put(f, button('chem_btn_alum', 'tab_chem_dosing', 'chem_ui_group', 'Dose alum 3 mL', '{"pump":"alum","ml":3}', 1,
+put(f, button('chem_btn_alum', 'tab_chem_dosing', 'chem_ui_group', 'Dose alum 1.1 mL', '{"pump":"alum","ml":1.1}', 1,
               ['mqtt_out_dose'], 1040, 440, '#8e44ad'))
-put(f, button('chem_btn_cl', 'tab_chem_dosing', 'chem_ui_group', 'Dose chlorine 0.6 mL', '{"pump":"chlorine","ml":0.6}',
+put(f, button('chem_btn_cl', 'tab_chem_dosing', 'chem_ui_group', 'Dose chlorine 1.1 mL', '{"pump":"chlorine","ml":1.1}',
               2, ['mqtt_out_dose'], 1040, 480, '#16a085'))
 put(f, mqtt_in('chem_status_in', 'tab_chem_dosing', 'rover/dosing/status', 820, 540, ['chem_status_fmt']))
 put(f, fn('chem_status_fmt', 'tab_chem_dosing', 'Totals (mL)',

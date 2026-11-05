@@ -4,9 +4,9 @@
 water_processor:
   ros__parameters:
     use_sim_time: true
-    raw_tank_capacity_ml: 1000.0      # Stage 1 transparent tank (500-1000 mL)
-    clean_tank_capacity_ml: 1000.0    # Stage 3 transparent tank (500-1000 mL)
-    filter_column_capacity_ml: 250.0  # Stage 2 column head space
+    raw_tank_capacity_ml: 400.0       # Stage 1 transparent tank (max 400 mL)
+    clean_tank_capacity_ml: 400.0     # Stage 3 transparent tank (max 400 mL)
+    filter_column_capacity_ml: 100.0  # Stage 2 column head space
     intake_flow_ml_s: 20.0            # 5 V submersible pump with ~0.5 m lift
     filter_flow_ml_s: 10.0            # gravity column throughput (real sand/charcoal ~3 mL/s)
     column_drain_ml_s: 10.0
@@ -14,8 +14,8 @@ water_processor:
     alum_pump_ml_s: 1.0               # peristaltic: 2 s = 2 mL (Issue #3)
     chlorine_pump_ml_s: 1.0
     alum_ml_per_litre: 3.0            # 1 % alum stock -> ~30 mg/L
-    chlorine_ml_per_litre: 0.6        # 0.35 % NaOCl stock (bleach 1:10) -> ~2 mg/L
-    max_single_dose_ml: 10.0
+    chlorine_ml_per_litre: 3.0        # 0.07 % NaOCl stock (bleach 1:50) -> ~2 mg/L
+    max_single_dose_ml: 4.0
     alum_stock_ml: 250.0
     chlorine_stock_ml: 250.0
     intake_max_run_s: 90.0            # motor-burnout cutoff (Issue #1)
@@ -44,7 +44,7 @@ mission_navigator:
     filter_timeout_s: 300.0
     chlorine_contact_s: 5.0           # shortened for simulation (real: 30 min)
     alum_ml_per_litre: 3.0
-    raw_tank_capacity_ml: 1000.0
+    raw_tank_capacity_ml: 380.0       # batch per trip (400 mL tanks)
     action_timeout_s: 60.0
     pose_source: ground_truth          # mission:=route switches this to dead_reckoning
     dr_speed_scale: 1.0                # dead-reckoning calibration (measured / commanded)

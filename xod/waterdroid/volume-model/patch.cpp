@@ -20,7 +20,7 @@ static inline uint32_t nc_since(uint32_t now, uint32_t t) { return now - t; }
 // ---------------------------------------------------------------------------
 // FlowMeter: feed it the running pulse count from the sensor's interrupt.
 //   YF-S401 ~5880 pulses/L (0.3-6 L/min, fitted)   YF-S201 ~450 pulses/L (1-30 L/min)
-//   CALIBRATE: pump exactly 1 L through it and use the pulse count.
+//   CALIBRATE: pump a measured 400 mL through it and scale the pulse count.
 // ---------------------------------------------------------------------------
 struct FlowMeter {
   float    pulsesPerLitre = 5880.0f;   // YF-S401 (the rover's sensor)
@@ -58,7 +58,7 @@ struct FlowMeter {
 // uses a calibrated rate (time how long 500 mL takes to pass the column).
 // ---------------------------------------------------------------------------
 struct VolumeModel {
-  float rawCapMl = 1000, clampColumnMl = 250, cleanCapMl = 1000;
+  float rawCapMl = 400, clampColumnMl = 100, cleanCapMl = 400;   // 400 mL tanks (Nov 2026)
   float filterMlPerS = 3.0f;      // CALIBRATE: real sand/charcoal column throughput
   float drainMlPerS  = 3.0f;      // column -> Stage 3
   // state / outputs

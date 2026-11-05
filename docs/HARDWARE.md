@@ -14,10 +14,10 @@ uses the numbers on this page.
 | 1 | L298N double H-bridge | #9 | left motor pair on A, right pair on B |
 | 4 | 5 V TT geared DC motors + 65 mm off-road wheels | #9 | skid steer, 2 motors in parallel per side |
 | 1 | 5 V submersible intake pump + coarse mesh pre-filter + 40–50 cm flexible hose | #1 | relay CH1 |
-| 1 | Stage 1 transparent raw water tank (500–1000 mL) | #1, #3 | |
+| 1 | Stage 1 transparent raw water tank (max 400 mL) | #1, #3 | |
 | 1 | 5 V alum dosing pump (peristaltic) | #3 | relay CH2 |
 | 1 | Stage 2 clear gravity-fed filtration column | #5 | gravel / sand / charcoal |
-| 1 | Stage 3 transparent disinfection & clean tank (500–1000 mL) | #3, #8 | |
+| 1 | Stage 3 transparent disinfection & clean tank (max 400 mL) | #3, #8 | |
 | 1 | 5 V chlorine dosing pump | #3 | relay CH3 |
 | 1 | 5 V delivery pump | #8 | relay CH4 |
 | 1 | SG90 servo + wooden delivery arm + nozzle | #6 | 0° stowed, 90° deployed |
@@ -26,7 +26,7 @@ uses the numbers on this page.
 ### How the rover works without level sensors or GPS (current build)
 
 * **Flow sensor instead of level sensors.** The one flow sensor sits on the intake hose between the pre-filter
-  and Stage 1. The intake stops when it has counted the batch (950 mL minus any water still on board) and
+  and Stage 1. The intake stops when it has counted the batch (380 mL minus any water still on board) and
   trips **DRY_RUN** if the pump runs 4 s without enough pulses. Stage 1 / column / Stage 3 volumes are then
   *estimated* (`VolumeModel`): + intake, + alum, + chlorine, − delivered, with gravity filtration at a
   calibrated mL/s. Set `USE_LEVEL_SENSORS 1` in the sketch if level sensors are added later (S2 on GPIO35,
@@ -128,7 +128,7 @@ Full wiring diagrams: `docs/wiring/power.svg`, `drive.svg`, `relays.svg`, `senso
 
 | What | Where | How |
 |------|-------|-----|
-| Flow sensor pulses per litre | `FLOW_PULSES_PER_L` | pump exactly 1 L into a jug, read `total_ml` on the dashboard, scale |
+| Flow sensor pulses per litre | `FLOW_PULSES_PER_L` | pump exactly 400 mL into a measuring jug, compare with `total_ml` on the dashboard, scale |
 | Filter column throughput | `FILTER_ML_PER_S` | time how long 500 mL takes to pass the column |
 | Route speed / pivot rate | `NAV_SPEED_MPS`, `NAV_TURN_DPS` | dashboard calibrate buttons (above) |
 | Dosing pump rate (mL/s) | `alum.rateMlPerS`, `chlorine.rateMlPerS` | run 60 s into a measuring cylinder |
@@ -138,10 +138,15 @@ Full wiring diagrams: `docs/wiring/power.svg`, `drive.svg`, `relays.svg`, `senso
 
 ## Treatment chemistry used for the dose numbers (Issue #3)
 
+One trip = a 380 mL batch (400 mL tanks), so each dose is about **1.1 mL alum** and **1.1 mL chlorine**:
+roughly one second of pump time each. The chlorine stock is diluted more than usual (1 : 50) so the dose is
+long enough for a 5 V pump to meter accurately.
+
+
 | Stock | Make it | Dose | Gives |
 |-------|---------|------|-------|
 | Alum 1 % | 10 g aluminium sulphate per litre of water | 3 mL per litre treated | ~30 mg/L (typical 10–50 mg/L for turbid river water) |
-| Chlorine 0.35 % | household bleach (3.5 %) diluted 1 : 10 | 0.6 mL per litre treated | ~2 mg/L free chlorine |
+| Chlorine 0.07 % | household bleach (3.5 %) diluted 1 : 50 (mix fresh every week) | 3 mL per litre treated | ~2 mg/L free chlorine |
 
 Allow ≥ 30 min chlorine contact time before delivery (the firmware default; the simulation shortens it to
 5 s). Jar-test the alum dose for your river water — turbidity changes it a lot. Never mix alum and bleach

@@ -44,9 +44,9 @@ struct MissionActions {          // one-shot requests, cleared by the caller aft
 
 struct MissionConfig {
   uint8_t  homesteads = 3;
-  float    batchMl = 1000;        // Stage 1 / Stage 3 batch size
+  float    batchMl = 380;         // Stage 1 / Stage 3 batch (400 mL tanks)
   float    alumMlPerL = 3.0f;     // 1 % alum stock
-  float    chlorineMlPerL = 0.6f; // 0.35 % NaOCl stock
+  float    chlorineMlPerL = 3.0f; // 0.07 % NaOCl stock (bleach 1:50) -> ~2 mg/L
   uint32_t pumpTimeoutMs = 120000;
   uint32_t filterTimeoutMs = 600000;
   uint32_t contactMs = 30UL * 60UL * 1000UL;   // chlorine contact time (WHO: >= 30 min)

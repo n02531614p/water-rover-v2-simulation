@@ -39,8 +39,8 @@
   <xacro:property name="upper_z" value="${deck_gap}"/>   <!-- upper deck relative to base_link -->
   <xacro:property name="top" value="${upper_z + deck_t/2}"/>  <!-- top surface of upper deck -->
 
-  <xacro:property name="tank_size" value="0.095"/>       <!-- ~0.86 L cube, 500-1000 mL class -->
-  <xacro:property name="water_mass" value="0.6"/>        <!-- tank + typical water load -->
+  <xacro:property name="tank_size" value="0.075"/>       <!-- ~420 mL cube: 400 mL tanks -->
+  <xacro:property name="water_mass" value="0.3"/>        <!-- tank + up to 400 mL water -->
 
   <!-- ===================== Materials ===================== -->
   <material name="wood"><color rgba="0.82 0.62 0.42 1"/></material>

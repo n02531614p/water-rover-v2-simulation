@@ -188,13 +188,13 @@ static void test_mission() {
   CHECK(m.state == MS_EN_ROUTE_RIVER && m.stateId() == 1 && m.driveAllowed);
   m.arrivedRiver(t);
   m.tick(t += 20, in);
-  CHECK(m.state == MS_PUMPING && m.act.startIntake && m.act.doseAlumMl > 2.9f && !m.driveAllowed);
+  CHECK(m.state == MS_PUMPING && m.act.startIntake && m.act.doseAlumMl > 1.1f && !m.driveAllowed);
   m.act.clear();
   in.intakeBusy = true; m.tick(t += 2000, in); CHECK(m.state == MS_PUMPING);
   in.intakeBusy = false; in.s1Pct = 60; m.tick(t += 20, in); CHECK(m.state == MS_FILTERING);
   m.tick(t += 1000, in); CHECK(m.state == MS_FILTERING);
-  in.s1Pct = 2; in.s2Pct = 5; in.cleanMl = 900; m.tick(t += 20, in); CHECK(m.state == MS_DOSING_CHLORINE);
-  m.tick(t += 20, in); NEAR(m.act.doseChlorineMl, 0.54f, 0.01f); m.act.clear();
+  in.s1Pct = 2; in.s2Pct = 5; in.cleanMl = 370; m.tick(t += 20, in); CHECK(m.state == MS_DOSING_CHLORINE);
+  m.tick(t += 20, in); NEAR(m.act.doseChlorineMl, 1.11f, 0.01f); m.act.clear();
   m.tick(t += 600, in); m.tick(t += 2100, in);
   CHECK(m.state == MS_EN_ROUTE_HOMESTEAD && m.stateId() == 3 && m.driveAllowed);
 
@@ -236,9 +236,9 @@ static void test_flow_volume() {
   f.resetBatch(); CHECK(f.batchMl == 0 && f.totalMl > 3000);
 
   VolumeModel v; v.filterMlPerS = v.drainMlPerS = 5;
-  v.addRaw(950); v.tick(0);
+  v.addRaw(380); v.tick(0);
   for (t = 100; t <= 400000; t += 100) v.tick(t);
-  NEAR(v.cleanMl, 950, 0.5f); CHECK(!v.filtering());
+  NEAR(v.cleanMl, 380, 0.5f); CHECK(!v.filtering());
   v.removeClean(2000); CHECK(v.cleanMl == 0);
 }
 
@@ -289,7 +289,7 @@ static void test_full_cycle() {
   vol.filterMlPerS = vol.drainMlPerS = 10;
   in.cfg.fullPct = 100; in.cfg.dryCheckMs = 4000; in.cfg.minRisePct = 1;
   seq.setMode(PM_ACTIVE, 0);
-  uint32_t t = 0, pulses = 0; float target = 950, lf = 0, la = 0, lc = 0, ld = 0;
+  uint32_t t = 0, pulses = 0; float target = 380, lf = 0, la = 0, lc = 0, ld = 0;
   bool atHome = false; int overlap = 0, deliveries = 0;
   m.start(0); nav.reset();
   for (; t < 3000000 && m.state != MS_COMPLETE; t += 20) {
@@ -299,7 +299,7 @@ static void test_full_cycle() {
     mi.deliveryBusy = dl.state == DL_WAIT_ARM || dl.state == DL_PUMPING; mi.cleanMl = vol.cleanMl;
     m.tick(t, mi);
     MissionActions& a = m.act;
-    if (a.startIntake) { target = 950 - (vol.rawMl + vol.columnMl + vol.cleanMl); fl.resetBatch(); in.start(); }
+    if (a.startIntake) { target = 380 - (vol.rawMl + vol.columnMl + vol.cleanMl); fl.resetBatch(); in.start(); }
     if (a.doseAlumMl > 0) al.start(a.doseAlumMl);
     if (a.doseChlorineMl > 0) cl.start(a.doseChlorineMl);
     if (a.armExtend) arm.command("EXTEND");
@@ -337,8 +337,8 @@ static void test_full_cycle() {
   CHECK(m.state == MS_COMPLETE);
   CHECK(overlap == 0);                                 // never drive + pump together
   CHECK(deliveries == 3);
-  CHECK(dl.totalMl > 900 && dl.totalMl < 960);
-  NEAR(al.totalMl, 2.85f, 0.2f);                       // 3 mL per L x 950 mL
+  CHECK(dl.totalMl > 350 && dl.totalMl < 390);
+  NEAR(al.totalMl, 1.14f, 0.05f);                      // 3 mL per L x 380 mL
   NEAR(nav.x, 0, 0.1f); NEAR(nav.y, 0, 0.1f);
   printf("full cycle: %.0f s, delivered %.0f mL in %d deliveries, alum %.2f mL, chlorine %.2f mL\n",
          t / 1000.0, dl.totalMl, deliveries, al.totalMl, cl.totalMl);

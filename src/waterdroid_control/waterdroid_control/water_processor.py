@@ -38,10 +38,10 @@ class WaterProcessor(Node):
         super().__init__('water_processor')
 
         p = self.declare_parameter
-        # Tank capacities (Stage 1 and 3 are 500-1000 mL transparent tanks)
-        self.raw_cap = p('raw_tank_capacity_ml', 1000.0).value
-        self.clean_cap = p('clean_tank_capacity_ml', 1000.0).value
-        self.column_cap = p('filter_column_capacity_ml', 250.0).value
+        # Tank capacities (Stage 1 and 3 hold at most 400 mL)
+        self.raw_cap = p('raw_tank_capacity_ml', 400.0).value
+        self.clean_cap = p('clean_tank_capacity_ml', 400.0).value
+        self.column_cap = p('filter_column_capacity_ml', 100.0).value
         # Flow rates
         self.intake_rate = p('intake_flow_ml_s', 20.0).value
         self.filter_rate = p('filter_flow_ml_s', 5.0).value
@@ -51,8 +51,8 @@ class WaterProcessor(Node):
         self.chlorine_rate = p('chlorine_pump_ml_s', 1.0).value
         # Dosing ratios (stock solutions, see docs/HARDWARE.md)
         self.alum_ml_per_l = p('alum_ml_per_litre', 3.0).value         # 1 % alum stock -> ~30 mg/L
-        self.chlorine_ml_per_l = p('chlorine_ml_per_litre', 0.6).value  # 0.35 % NaOCl stock -> ~2 mg/L
-        self.max_dose_ml = p('max_single_dose_ml', 10.0).value
+        self.chlorine_ml_per_l = p('chlorine_ml_per_litre', 3.0).value  # 0.07 % NaOCl stock (bleach 1:50) -> ~2 mg/L
+        self.max_dose_ml = p('max_single_dose_ml', 4.0).value
         # Safety
         self.intake_max_run_s = p('intake_max_run_s', 90.0).value
         self.dry_run_s = p('dry_run_timeout_s', 3.0).value

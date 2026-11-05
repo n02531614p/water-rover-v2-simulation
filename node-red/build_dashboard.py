@@ -214,18 +214,18 @@ button('wd_btn_f_auto', 'wd_g_filter', 'Auto', 'auto', 'str', ['wd_filter_out'],
 
 # ======================================================================= Dosing (#3)
 mqtt_out('wd_dose_out', 'rover/dosing/cmd', 'dose')
-numeric('wd_num_alum', 'wd_g_dose', 'Alum mL', 0, 10, 0.5, 1, 'dose', ['wd_dose_alum_fmt'], 'alum')
+numeric('wd_num_alum', 'wd_g_dose', 'Alum mL', 0, 4, 0.1, 1, 'dose', ['wd_dose_alum_fmt'], 'alum')
 func('wd_dose_alum_fmt', 'store alum mL', "flow.set('alum_ml', Number(msg.payload));\nreturn null;", 1, [[]], 'dose')
 button('wd_btn_dose_alum', 'wd_g_dose', 'Dose alum', 'alum', 'str', ['wd_dose_build'], 'dose', 2, width=3,
        bg='#8e44ad')
-numeric('wd_num_cl', 'wd_g_dose', 'Chlorine mL', 0, 5, 0.1, 3, 'dose', ['wd_dose_cl_fmt'], 'chlorine')
+numeric('wd_num_cl', 'wd_g_dose', 'Chlorine mL', 0, 4, 0.1, 3, 'dose', ['wd_dose_cl_fmt'], 'chlorine')
 func('wd_dose_cl_fmt', 'store chlorine mL', "flow.set('chlorine_ml', Number(msg.payload));\nreturn null;", 1,
      [[]], 'dose')
 button('wd_btn_dose_cl', 'wd_g_dose', 'Dose chlorine', 'chlorine', 'str', ['wd_dose_build'], 'dose', 4, width=3,
        bg='#16a085')
 func('wd_dose_build', 'Build dose command',
      "const pump = msg.payload;\n"
-     "const ml = pump === 'alum' ? (flow.get('alum_ml') ?? 3) : (flow.get('chlorine_ml') ?? 0.6);\n"
+     "const ml = pump === 'alum' ? (flow.get('alum_ml') ?? 1.1) : (flow.get('chlorine_ml') ?? 1.1);\n"
      "msg.payload = JSON.stringify({pump: pump, ml: ml});\nreturn msg;", 1, [['wd_dose_out']], 'dose')
 button('wd_btn_dose_stop', 'wd_g_dose', 'Stop dosing', 'stop', 'str', ['wd_dose_out'], 'dose', 5, width=6)
 mqtt_in('wd_dose_in', 'rover/dosing/status', ['wd_dose_fmt'], 'dose')
@@ -258,17 +258,17 @@ text('wd_arm_txt', 'wd_g_arm', 'Arm', 5, 'arm', width=3)
 
 # ======================================================================= Delivery (#8)
 mqtt_out('wd_deliv_out', 'rover/delivery/cmd', 'deliv')
-numeric('wd_num_deliv', 'wd_g_deliv', 'Volume mL', 50, 1000, 50, 1, 'deliv', ['wd_deliv_store'], 'ml')
+numeric('wd_num_deliv', 'wd_g_deliv', 'Volume mL', 20, 400, 10, 1, 'deliv', ['wd_deliv_store'], 'ml')
 func('wd_deliv_store', 'store volume', "flow.set('deliv_ml', Number(msg.payload));\nreturn null;", 1, [[]], 'deliv')
 button('wd_btn_deliv', 'wd_g_deliv', 'Deliver', 'go', 'str', ['wd_deliv_build'], 'deliv', 2, width=3, bg='#2980b9')
 func('wd_deliv_build', 'Build delivery command',
-     "msg.payload = JSON.stringify({ml: flow.get('deliv_ml') ?? 300});\nreturn msg;", 1, [['wd_deliv_out']], 'deliv')
+     "msg.payload = JSON.stringify({ml: flow.get('deliv_ml') ?? 120});\nreturn msg;", 1, [['wd_deliv_out']], 'deliv')
 button('wd_btn_deliv_stop', 'wd_g_deliv', 'Stop delivery', 'stop', 'str', ['wd_deliv_out'], 'deliv', 3, width=6)
 mqtt_in('wd_deliv_in', 'rover/delivery/status', ['wd_deliv_fmt'], 'deliv')
 func('wd_deliv_fmt', 'Delivery status', "const s = msg.payload || {};\n"
      "return [{payload: Number(s.clean_ml||0)}, {payload: `${s.deliveries||0} deliveries . ${Number(s.delivered_total_ml||0).toFixed(0)} mL total . ${s.state || (s.pump ? 'PUMPING' : 'idle')}${s.reason ? ' (' + s.reason + ')' : ''}`}];",
      2, [['wd_clean_gauge'], ['wd_deliv_txt']], 'deliv')
-gauge('wd_clean_gauge', 'wd_g_deliv', 'Clean water on board', 'mL', 0, 1000, 4, 'deliv', seg=('100', '300'))
+gauge('wd_clean_gauge', 'wd_g_deliv', 'Clean water on board', 'mL', 0, 400, 4, 'deliv', seg=('40', '120'))
 text('wd_deliv_txt', 'wd_g_deliv', 'Delivery', 5, 'deliv')
 add({'id': 'wd_deliv_note', 'type': 'comment', 'z': TAB, 'name': 'Delivery pump only runs with the arm deployed',
      'info': 'Interlock in firmware (DeliveryController) and in the sim (water_processor).', **pos(3, 'deliv'),

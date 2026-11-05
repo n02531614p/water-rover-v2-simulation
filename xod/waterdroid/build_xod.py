@@ -165,7 +165,7 @@ NODES['delivery-controller'] = dict(
          'pumps while HOME (arrived at homestead) AND ARM (arm deployed, from servo-arm DEP) are true; '
          'stops at the volume, when the arm moves away or Stage 3 (S3 %) is nearly empty. '
          'ST: 0 idle 1 waiting for arm 2 pumping 3 done 4 aborted.',
-    inputs=[('REQ', 'p', None), ('ML', 'n', '300'), ('ABRT', 'p', None), ('HOME', 'b', 'False'),
+    inputs=[('REQ', 'p', None), ('ML', 'n', '120'), ('ABRT', 'p', None), ('HOME', 'b', 'False'),
             ('ARM', 'b', 'False'), ('S3', 'n', '0'), ('FLOW', 'n', '25', 'pump mL/s (calibrate)'),
             ('RON', 'b', 'False', 'relay CH4 actually ON')],
     outputs=[('WANT', 'b'), ('ST', 'n'), ('DLV', 'n', 'mL this delivery'), ('TOT', 'n'), ('DONE', 'p')],

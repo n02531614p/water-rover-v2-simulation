@@ -57,7 +57,7 @@ class MissionNavigator(Node):
         self.filter_timeout = p('filter_timeout_s', 300.0).value
         self.contact_s = p('chlorine_contact_s', 5.0).value
         self.alum_ml_per_l = p('alum_ml_per_litre', 3.0).value
-        self.raw_cap_ml = p('raw_tank_capacity_ml', 1000.0).value
+        self.raw_cap_ml = p('raw_tank_capacity_ml', 380.0).value   # batch per trip
         self.action_timeout = p('action_timeout_s', 60.0).value
         # 'ground_truth' = perfect pose from Gazebo; 'dead_reckoning' = like the real rover
         # (no GPS/compass): pose integrated from the commanded /cmd_vel only, so wheel slip
