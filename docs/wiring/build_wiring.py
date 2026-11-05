@@ -124,7 +124,7 @@ class Sheet:
 
 # =========================================================== 1. power distribution
 def power():
-    s = Sheet(1000, 560, 'Power distribution')
+    s = Sheet(1060, 560, 'Power distribution')
     pb = s.box(20, 150, 190, 170, 'Power bank 10,000 mAh', '5 V USB', right=['USB #1', 'USB #2', 'GND'], start=210, pitch=40)
     esp = s.box(330, 30, 190, 120, 'ESP32 DevKit V1', 'logic only', left=['USB'], right=['3V3', 'GND', 'GPIO39'], start=80, pitch=24)
     s.wire([pb['USB #1'], (260, 210), (260, 80), esp['USB']], 'w5', label='USB cable', lx=268, ly=150, anchor='start')
@@ -137,7 +137,7 @@ def power():
     s.dot(560, 290)
     s.note(568, 200, 'ESP32 GND joins the GND bus')
     # loads hanging from the rail
-    loads = [(250, 'L298N', '+12V (Vs) and +5V'), (390, 'Relay boards A+B', 'JD-VCC + 4 x COM'),
+    loads = [(250, 'L298N', '+12V (Vs) and +5V'), (390, 'Relay A+B', 'RY-VCC + 4 COM'),
              (530, 'SG90 servo', 'red / brown'), (670, 'Flow sensor', 'red / black')]
     for x, name, sub in loads:
         s.wire([(x, 250), (x, 380)], 'w5')
@@ -149,7 +149,7 @@ def power():
     s.cap(820, 360, '1000 uF', True)
     s.wire([(820, 384), (820, 470)], 'wg')
     s.wire([(860, 290), (860, 470), (820, 470)], 'wg'); s.dot(860, 290)
-    s.text(840, 500, 'bulk cap across the rail', 's', 'middle')
+    s.text(840, 500, '1000 uF across the rail', 's', 'middle')
     # rail sense divider
     s.wire([(900, 250), (900, 330)], 'w5'); s.dot(900, 250)
     s.resistor(900, 330, label='10k')
@@ -157,6 +157,9 @@ def power():
     s.resistor(900, 380, label='10k')
     s.wire([(900, 412), (900, 440)], 'wg'); s.gnd(900, 440)
     s.wire([(900, 380), (940, 380), (940, 160), (600, 160), (600, 128), esp['GPIO39']], 'wa')
+    s.text(960, 404, 'battery sense', 's')
+    s.text(960, 420, '(optional,', 's')
+    s.text(960, 436, 'see sheet 4)', 's')
     s.note(30, 520, 'Two USB outputs isolate the ESP32 from motor inrush. Single-output bank: feed the ESP32 from the rail and keep the 1000 uF cap.')
     return s
 
@@ -304,8 +307,9 @@ SHEETS = [('power', power, 'Power distribution',
            'chlorine and delivery pumps. Each relay passes the 5 V rail from COM to NO and on to its pump; the pump '
            'returns to ground. The relays never switch the motors.'),
           ('sensors', sensors, 'Servo, flow sensor, battery sense (#5 #6 #10)',
-           'The servo signal and the flow-sensor pulse are the only other ESP32 inputs and outputs. Both sensors '
-           'that feed analog or 5 V signals into the ESP32 go through dividers.')]
+           'The servo signal and the flow-sensor pulse are the only other ESP32 inputs and outputs. The flow sensor '
+           'needs its 10k / 20k divider (5 V pulses to 3.3 V). The battery-sense divider on the right is the same one '
+           'shown on the power sheet, close up; it and its 100 nF smoothing capacitor are optional.')]
 
 
 def main():
