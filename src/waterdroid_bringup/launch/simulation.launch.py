@@ -12,15 +12,17 @@ Arguments
            none = no autonomous mission (teleop / manual testing)
   mqtt     true = status_monitor mirrors telemetry onto the Node-RED MQTT topics
   rviz     true = open RViz
+  gui      false = run Gazebo headless (server only, e.g. on a laptop without a GPU)
 """
 import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.conditions import IfCondition, LaunchConfigurationEquals
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import (Command, EqualsSubstitution, LaunchConfiguration,
+                                  PathJoinSubstitution, PythonExpression)
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
@@ -45,6 +47,7 @@ def generate_launch_description():
         DeclareLaunchArgument('mission', default_value='gt', choices=['gt', 'odom', 'none']),
         DeclareLaunchArgument('mqtt', default_value='false'),
         DeclareLaunchArgument('rviz', default_value='false'),
+        DeclareLaunchArgument('gui', default_value='true', description='false = headless Gazebo server only'),
         DeclareLaunchArgument('x', default_value='0.0'),
         DeclareLaunchArgument('y', default_value='0.0'),
     ]
@@ -52,7 +55,9 @@ def generate_launch_description():
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pkg_ros_gz_sim, 'launch', 'gz_sim.launch.py')),
         launch_arguments={
-            'gz_args': ['-r ', PathJoinSubstitution([pkg_gazebo, 'worlds', world])],
+            'gz_args': ['-r ',
+                        PythonExpression(["'' if '", LaunchConfiguration('gui'), "' == 'true' else '-s --headless-rendering '"]),
+                        PathJoinSubstitution([pkg_gazebo, 'worlds', world])],
             'on_exit_shutdown': 'true',
         }.items(),
     )
@@ -94,11 +99,11 @@ def generate_launch_description():
 
     mission_gt = Node(package='waterdroid_control', executable='mission_navigator_gt',
                       name='mission_navigator', output='screen', parameters=[params],
-                      condition=LaunchConfigurationEquals('mission', 'gt'))
+                      condition=IfCondition(EqualsSubstitution(LaunchConfiguration('mission'), 'gt')))
     mission_odom = Node(package='waterdroid_control', executable='mission_navigator',
                         name='mission_navigator', output='screen',
                         parameters=[params, {'use_sim_time': True}],
-                        condition=LaunchConfigurationEquals('mission', 'odom'))
+                        condition=IfCondition(EqualsSubstitution(LaunchConfiguration('mission'), 'odom')))
 
     rviz = Node(package='rviz2', executable='rviz2', arguments=['-d', rviz_cfg],
                 parameters=[{'use_sim_time': True}], condition=IfCondition(LaunchConfiguration('rviz')))

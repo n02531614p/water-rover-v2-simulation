@@ -152,6 +152,11 @@ for iid, label, vol, tot in [('inject_sim_stage1_vol', 'Simulate Stage 1 Inflow 
     p['total_tank_volume'] = tot
     n['payload'] = json.dumps(p)
     n['name'] = label
+# The 10-minute repeat would inject chemicals into empty tanks or while driving once it
+# reaches the real pumps; the mission (MissionCore) doses per batch, so make it manual.
+t = get(f, 'inject_timer_trigger')
+t['repeat'] = ''
+t['name'] = 'Timer dose (manual - the mission doses each batch automatically)'
 get(f, 'mqtt_in_telemetry')['topic'] = 'rover/water/+/inflow'
 get(f, 'mqtt_out_telemetry')['topic'] = 'rover/dosing/telemetry'
 f = [n for n in f if n['id'] not in ('gpio_out_alum', 'gpio_out_chlorine', 'mqtt_out_alum', 'mqtt_out_chlorine')]

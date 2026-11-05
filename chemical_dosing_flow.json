@@ -10,7 +10,7 @@
         "id": "inject_timer_trigger",
         "type": "inject",
         "z": "tab_chem_dosing",
-        "name": "Timer Trigger (Every 10 mins)",
+        "name": "Timer dose (manual - the mission doses each batch automatically)",
         "props": [
             {
                 "p": "payload"
@@ -20,7 +20,7 @@
                 "vt": "str"
             }
         ],
-        "repeat": "600",
+        "repeat": "",
         "crontab": "",
         "once": false,
         "onceDelay": 0.1,

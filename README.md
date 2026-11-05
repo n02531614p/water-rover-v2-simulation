@@ -30,6 +30,7 @@ colcon build --symlink-install && source install/setup.bash
 ros2 launch waterdroid_bringup simulation.launch.py              # full autonomous mission
 ros2 launch waterdroid_bringup simulation.launch.py mqtt:=true   # + drive the Node-RED dashboard
 ros2 launch waterdroid_bringup simulation.launch.py mission:=none rviz:=true
+ros2 launch waterdroid_bringup simulation.launch.py gui:=false            # headless (no GPU / over SSH)
 ros2 launch waterdroid_description display.launch.py             # model only, with joint sliders
 ```
 

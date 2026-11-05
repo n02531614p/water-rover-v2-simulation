@@ -168,7 +168,7 @@
         "type": "serial out",
         "z": "member9_tab",
         "name": "ESP32 Command",
-        "serial": "esp32_port",
+        "serial": "283d496f2c7f3795",
         "x": 510,
         "y": 260,
         "wires": []
@@ -199,7 +199,7 @@
         "newline": "\\n",
         "bin": "false",
         "out": "char",
-        "addchar": "",
+        "addchar": "\\n",
         "responsetimeout": 10000
     },
     {

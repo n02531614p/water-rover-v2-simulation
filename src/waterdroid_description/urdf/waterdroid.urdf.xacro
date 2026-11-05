@@ -128,9 +128,11 @@
       <dynamics damping="0.01" friction="0.01"/>
     </joint>
 
-    <!-- Skid steer: high longitudinal grip, lower lateral grip so the rover can pivot -->
+    <!-- Skid steer: fdir1 = wheel axle (lateral) -> mu1 is the LATERAL grip, mu2 the rolling-direction
+         grip. Low lateral grip lets the 4WD pivot on the spot; with high lateral grip the heavier (tank)
+         side wins and the rover slides instead of turning. -->
     <gazebo reference="${prefix}_wheel">
-      <mu1>1.0</mu1><mu2>0.4</mu2>
+      <mu1>0.35</mu1><mu2>1.0</mu2>
       <kp>1e6</kp><kd>100</kd>
       <fdir1>0 0 1</fdir1>
     </gazebo>

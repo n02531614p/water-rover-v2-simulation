@@ -16,7 +16,6 @@ setup(
     maintainer_email='student@nust.ac.zw',
     description='Waterdroid mission state machine, simulated treatment train, arm and status/MQTT bridge',
     license='Apache-2.0',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'mission_navigator = waterdroid_control.mission_navigator:main',

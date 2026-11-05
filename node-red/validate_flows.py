@@ -22,7 +22,7 @@ for f in files:
     for n in d:
         for out in n.get('wires', []):
             errs += [f"{n['id']} wires to missing {w}" for w in out if w not in idset]
-        for ref in ('group', 'tab', 'broker', 'serialport', 'z'):
+        for ref in ('group', 'tab', 'broker', 'serialport', 'serial', 'z'):
             if n['type'] in ('mqtt-broker', 'serial-port') and ref in ('broker', 'serialport'):
                 continue                           # config nodes: host name / port path, not a reference
             if ref in n and n[ref] and n[ref] not in idset:
