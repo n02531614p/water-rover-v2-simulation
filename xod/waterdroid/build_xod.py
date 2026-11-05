@@ -135,10 +135,10 @@ node {
 
 # ----------------------------------------------------------------- Issue #6
 NODES['servo-arm'] = dict(
-    desc='Issue #6 SG90 delivery arm with smooth interpolation (1 deg / 20 ms). Stow = 0 deg, deploy = 90 deg. '
+    desc='Issue #6 SG90 servo INTAKE boom with smooth interpolation (1 deg / 20 ms). Raised = 0 deg, in the water = 90 deg. '
          'Connect VAL (0-1 = 0-180 deg) to xod-dev/servo/rotate-servo (or ANG in degrees). '
-         'FRZ = e-stop: hold position.',
-    inputs=[('EXT', 'p', None, 'Extend Arm'), ('RET', 'p', None, 'Retract Arm'), ('ANG', 'n', '45', 'slider 0-90'),
+         'FRZ = e-stop: hold position. DEP -> mission DEP and NOT DEP -> intake BLK; NOT STW -> drive INH.',
+    inputs=[('EXT', 'p', None, 'Lower intake'), ('RET', 'p', None, 'Raise intake'), ('ANG', 'n', '45', 'slider 0-90'),
             ('SET', 'p', None, 'go to ANG'), ('FRZ', 'b', 'False')],
     outputs=[('ANGO', 'n', 'current angle deg'), ('VAL', 'n', 'servo value 0-1'), ('DEP', 'b'), ('STW', 'b')],
     cpp=core('motion_cores.h') + '''
@@ -161,12 +161,12 @@ node {
 
 # ----------------------------------------------------------------- Issue #8
 NODES['delivery-controller'] = dict(
-    desc='Issue #8 delivery pump (Stage 3 -> homestead container). REQ starts an ML delivery that only '
-         'pumps while HOME (arrived at homestead) AND ARM (arm deployed, from servo-arm DEP) are true; '
-         'stops at the volume, when the arm moves away or Stage 3 (S3 %) is nearly empty. '
+    desc='Issue #8 delivery pump (Stage 3 -> fixed nozzle -> homestead container). REQ starts an ML delivery that '
+         'only pumps while HOME (arrived at homestead) is true; leave ARM = true (the nozzle is fixed). '
+         'Stops at the volume or when Stage 3 (S3 %) is nearly empty. '
          'ST: 0 idle 1 waiting for arm 2 pumping 3 done 4 aborted.',
     inputs=[('REQ', 'p', None), ('ML', 'n', '120'), ('ABRT', 'p', None), ('HOME', 'b', 'False'),
-            ('ARM', 'b', 'False'), ('S3', 'n', '0'), ('FLOW', 'n', '25', 'pump mL/s (calibrate)'),
+            ('ARM', 'b', 'True', 'fixed nozzle: leave true'), ('S3', 'n', '0'), ('FLOW', 'n', '25', 'pump mL/s (calibrate)'),
             ('RON', 'b', 'False', 'relay CH4 actually ON')],
     outputs=[('WANT', 'b'), ('ST', 'n'), ('DLV', 'n', 'mL this delivery'), ('TOT', 'n'), ('DONE', 'p')],
     cpp=core('pump_cores.h') + '''
@@ -230,8 +230,8 @@ NODES['mission-fsm'] = dict(
     inputs=[('STRT', 'p', None), ('PAUS', 'p', None), ('RSUM', 'p', None), ('ABRT', 'p', None),
             ('ESTP', 'b', 'False'), ('ARIV', 'p', None, 'arrived at river'), ('AHOM', 'p', None, 'arrived at homestead'),
             ('ADEP', 'p', None, 'arrived at depot'), ('INB', 'b', 'False', 'intake busy'), ('ALB', 'b', 'False', 'alum busy'),
-            ('CLB', 'b', 'False', 'chlorine busy'), ('S1', 'n', '0'), ('S2', 'n', '0'), ('DEP', 'b', 'False', 'arm deployed'),
-            ('STW', 'b', 'True', 'arm stowed'), ('DLB', 'b', 'False', 'delivery busy'), ('CML', 'n', '0', 'Stage 3 mL'),
+            ('CLB', 'b', 'False', 'chlorine busy'), ('S1', 'n', '0'), ('S2', 'n', '0'), ('DEP', 'b', 'False', 'intake lowered'),
+            ('STW', 'b', 'True', 'intake raised'), ('DLB', 'b', 'False', 'delivery busy'), ('CML', 'n', '0', 'Stage 3 mL'),
             ('HOMS', 'n', '3', 'homesteads per trip'), ('CNT', 'n', '1800', 'chlorine contact s')],
     outputs=[('ST', 'n'), ('SID', 'n'), ('DRV', 'b', 'motors allowed'), ('INTK', 'p'), ('ALUM', 'p'), ('ALML', 'n'),
              ('CHLR', 'p'), ('CLML', 'n'), ('EXT', 'p'), ('RET', 'p'), ('DLV', 'p'), ('DLML', 'n'), ('STOP', 'p')],

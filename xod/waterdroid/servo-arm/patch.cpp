@@ -2,7 +2,7 @@
 // Do not edit by hand: edit the core header and re-run the generator.
 
 // ============================================================================
-// motion_cores.h - filtration monitor (Issue #5), delivery arm (Issue #6) and
+// motion_cores.h - filtration monitor (Issue #5), servo intake arm (Issue #6) and
 // L298N 4WD drive (Issue #9) logic for Water Rover v2.
 // Pure C++11, no Arduino calls (time passed in as nowMs). Shared by the ESP32
 // sketch, the XOD C++ nodes and the host unit tests.
@@ -75,8 +75,9 @@ static inline float levelPct(int raw, int dry, int wet) {
 }
 
 // ---------------------------------------------------------------------------
-// Issue #6 - Stage 4 servo-driven delivery arm (SG90).
-// Stow 0 deg, deploy 90 deg, smooth interpolation 1 deg / 20 ms (same as
+// Issue #6 - servo-driven INTAKE arm (SG90): lowers the intake hose + pump into the river.
+// (The delivery nozzle is fixed.)
+// Raised 0 deg, in the water 90 deg, smooth interpolation 1 deg / 20 ms (same as
 // robotic_arm.ino). Text protocol: EXTEND | RETRACT | ANGLE:0-90
 // ---------------------------------------------------------------------------
 struct ServoArm {

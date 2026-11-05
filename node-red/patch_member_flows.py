@@ -100,9 +100,13 @@ get(f, 'angle_command')['wires'][0] = ['serial_command', 'angle_display', 'arm_c
 put(f, mqtt_in('arm_status_in', 'arm_tab', 'rover/arm/status', 160, 300, ['arm_status_angle']))
 put(f, fn('arm_status_angle', 'arm_tab', 'Live arm angle', 'msg.payload = Number((msg.payload || {}).angle || 0);\nreturn msg;',
           1, [['arm_angle_gauge']], 400, 300))
-put(f, gauge('arm_angle_gauge', 'arm_tab', 'arm_group', 'Live arm angle', 'deg', 0, 90, 5, 640, 300))
+put(f, gauge('arm_angle_gauge', 'arm_tab', 'arm_group', 'Intake angle', 'deg', 0, 90, 5, 640, 300))
 c = get(f, 'arm_comment')
-c['name'] = 'Commands go to the ESP32 over MQTT rover/arm/cmd (EXTEND | RETRACT | ANGLE:n)'
+c['name'] = 'Servo INTAKE arm: commands go to the ESP32 over MQTT rover/arm/cmd (EXTEND = lower | RETRACT = raise | ANGLE:n)'
+get(f, 'arm_group')['name'] = 'Intake arm (servo)'
+get(f, 'extend_button')['label'] = 'Lower intake'
+get(f, 'retract_button')['label'] = 'Raise intake'
+get(f, 'arm_dashboard_tab')['name'] = 'Intake Arm'
 c['info'] = 'For a USB bench test with robotic_arm.ino instead, swap the mqtt out for a serial out (9600 baud).'
 save('robotic_arm_flow.json', f)
 

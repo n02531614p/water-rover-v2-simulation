@@ -247,7 +247,7 @@ def relays():
 def sensors():
     s = Sheet(1000, 470, 'Servo, flow sensor and battery sense')
     # SG90
-    sv = s.box(110, 70, 170, 150, 'SG90 servo', 'delivery arm (#6)', left=['orange', 'red', 'brown'], start=126, pitch=34)
+    sv = s.box(110, 70, 170, 150, 'SG90 servo', 'intake arm (#6)', left=['orange', 'red', 'brown'], start=126, pitch=34)
     s.wire([sv['orange'], (60, 126)], 'ws'); s.text(54, 130, 'GPIO13', 'p', 'end')
     s.wire([sv['red'], (60, 160)], 'w5'); s.text(54, 164, '5 V', 'p', 'end')
     s.wire([sv['brown'], (60, 194)], 'wg'); s.text(54, 198, 'GND', 'p', 'end')

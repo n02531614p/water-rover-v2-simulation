@@ -141,7 +141,7 @@ struct DosingPump {
 // ---------------------------------------------------------------------------
 // Issue #8 - Clean water storage & delivery
 //   Delivery pump (Stage 3 -> container) only runs when the rover is at a
-//   homestead AND the Stage 4 arm is deployed. Volume = flow x ON-time.
+//   homestead (`armDeployed` stays true: the nozzle is fixed on this build). Volume = flow x ON-time.
 // ---------------------------------------------------------------------------
 enum DeliveryState : uint8_t { DL_IDLE = 0, DL_WAIT_ARM, DL_PUMPING, DL_DONE, DL_ABORTED };
 

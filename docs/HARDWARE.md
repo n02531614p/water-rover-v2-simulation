@@ -1,7 +1,7 @@
 # Water Rover v2 — hardware, pin map and wiring
 
 This is the as-built rover from the design drawing (two wooden decks, 4WD, three-stage treatment train,
-servo delivery arm). Everything in the repo — Gazebo model, ESP32 firmware, XOD nodes, Node-RED flows —
+servo-driven intake, fixed delivery nozzle). Everything in the repo — Gazebo model, ESP32 firmware, XOD nodes, Node-RED flows —
 uses the numbers on this page.
 
 ## Parts list (what we have)
@@ -20,7 +20,8 @@ uses the numbers on this page.
 | 1 | Stage 3 transparent disinfection & clean tank (max 400 mL) | #3, #8 | |
 | 1 | 5 V chlorine dosing pump | #3 | relay CH3 |
 | 1 | 5 V delivery pump | #8 | relay CH4 |
-| 1 | SG90 servo + wooden delivery arm + nozzle | #6 | 0° stowed, 90° deployed |
+| 1 | SG90 servo on the **intake** boom (hose + pre-filter + pump) | #6 | 0° raised, 90° in the water |
+| 1 | Fixed delivery nozzle | #8 | container goes under it |
 | 1 | Water-flow sensor **YF-S401** (hall turbine, 0.3-6 L/min, ~5880 pulses/L) | #1, #5 | on the intake line — measures the batch and detects dry-running |
 
 ### How the rover works without level sensors or GPS (current build)
@@ -119,6 +120,8 @@ Full wiring diagrams: `docs/wiring/power.svg`, `drive.svg`, `relays.svg`, `senso
 * **Relay board:** remove the JD-VCC jumper, feed JD-VCC from the 5 V rail and VCC from the ESP32 3.3 V pin
   so the 3.3 V GPIOs can drive the opto-couplers. The board is active-LOW: the firmware drives all four
   inputs HIGH before anything else at boot so no pump clicks on.
+* **Intake interlocks.** The intake pump only runs with the servo intake lowered, and the rover only drives with it
+  raised (a lowered hose would drag).
 * **Drive and pumps never run together.** The mission state machine inhibits the motors while any pump relay
   is on (pumping, dosing, delivering), which is also what keeps the power bank from shutting down.
 * **Power-bank auto-off:** some banks switch off below ~100 mA. The ESP32 with Wi-Fi draws more than that, so

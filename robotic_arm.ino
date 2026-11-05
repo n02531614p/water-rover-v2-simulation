@@ -1,4 +1,5 @@
-// Stage 4 delivery arm (Issue #6) - bench test sketch.
+// Servo INTAKE arm (Issue #6) - bench test sketch: EXTEND lowers the intake into the water, RETRACT raises it.
+// (The delivery nozzle is fixed; the servo moves the intake hose + pump.)
 // Runs on the rover ESP32 (ESP32Servo library, GPIO13 per firmware/waterdroid_esp32/src/rover_pins.h)
 // or on an Arduino Uno for bench testing (Servo library, pin 9).
 // The integrated rover firmware uses the same logic in src/motion_cores.h (ServoArm).

@@ -188,10 +188,15 @@ static void test_mission() {
   CHECK(m.state == MS_EN_ROUTE_RIVER && m.stateId() == 1 && m.driveAllowed);
   m.arrivedRiver(t);
   m.tick(t += 20, in);
-  CHECK(m.state == MS_PUMPING && m.act.startIntake && m.act.doseAlumMl > 1.1f && !m.driveAllowed);
+  CHECK(m.state == MS_PUMPING && m.act.armExtend && !m.act.startIntake && !m.driveAllowed);   // lower intake first
   m.act.clear();
-  in.intakeBusy = true; m.tick(t += 2000, in); CHECK(m.state == MS_PUMPING);
-  in.intakeBusy = false; in.s1Pct = 60; m.tick(t += 20, in); CHECK(m.state == MS_FILTERING);
+  m.tick(t += 20, in); CHECK(!m.act.startIntake);                                         // waits for the servo
+  in.armDeployed = true; in.armStowed = false;
+  m.tick(t += 20, in); CHECK(m.act.startIntake && m.act.doseAlumMl > 1.1f); m.act.clear();
+  in.intakeBusy = true; m.tick(t += 2000, in); CHECK(m.state == MS_PUMPING && !m.act.armRetract);
+  in.intakeBusy = false; in.s1Pct = 60; m.tick(t += 20, in); CHECK(m.act.armRetract); m.act.clear();
+  CHECK(m.state == MS_PUMPING);                                                           // waits until raised
+  in.armDeployed = false; in.armStowed = true; m.tick(t += 20, in); CHECK(m.state == MS_FILTERING);
   m.tick(t += 1000, in); CHECK(m.state == MS_FILTERING);
   in.s1Pct = 2; in.s2Pct = 5; in.cleanMl = 370; m.tick(t += 20, in); CHECK(m.state == MS_DOSING_CHLORINE);
   m.tick(t += 20, in); NEAR(m.act.doseChlorineMl, 1.11f, 0.01f); m.act.clear();
@@ -201,12 +206,9 @@ static void test_mission() {
   for (int h = 0; h < 3; h++) {
     m.arrivedHomestead(t);
     CHECK(m.state == MS_DISPENSING && m.stateId() == 4);
-    m.tick(t += 20, in); CHECK(m.act.armExtend); m.act.clear();
-    in.armDeployed = true; in.armStowed = false;
-    m.tick(t += 20, in); NEAR(m.act.deliverMl, in.cleanMl / (3 - h), 0.5f);
+    m.tick(t += 20, in); NEAR(m.act.deliverMl, in.cleanMl / (3 - h), 0.5f); CHECK(!m.act.armExtend);
     in.cleanMl -= m.act.deliverMl; m.act.clear();
-    in.deliveryBusy = false; m.tick(t += 600, in); CHECK(m.act.armRetract); m.act.clear();
-    in.armDeployed = false; in.armStowed = true; m.tick(t += 20, in);
+    in.deliveryBusy = false; m.tick(t += 600, in);
   }
   CHECK(m.state == MS_RETURNING);
   m.arrivedDepot(t); CHECK(m.state == MS_COMPLETE);
@@ -311,10 +313,10 @@ static void test_full_cycle() {
     vol.addRaw(fl.totalMl - lf); lf = fl.totalMl; vol.addRaw(al.totalMl - la); la = al.totalMl;
     vol.addClean(cl.totalMl - lc); lc = cl.totalMl; vol.removeClean(dl.totalMl - ld); ld = dl.totalMl;
     vol.tick(t);
-    in.tick(t, seq.on[0], target > 0 ? 100 * fl.batchMl / target : 100, false);
+    in.tick(t, seq.on[0], target > 0 ? 100 * fl.batchMl / target : 100, !arm.deployed());
     al.tick(t, seq.on[1]); cl.tick(t, seq.on[2]);
     uint16_t before = dl.count;
-    dl.tick(t, seq.on[3], atHome, arm.deployed(), vol.cleanPct());
+    dl.tick(t, seq.on[3], atHome, true, vol.cleanPct());
     deliveries += dl.count - before;
     seq.setWant(0, in.want); seq.setWant(1, al.want); seq.setWant(2, cl.want); seq.setWant(3, dl.want);
     seq.tick(t, 5.0f, true);
@@ -329,9 +331,11 @@ static void test_full_cycle() {
     static const char* NM[] = {"right", "reverse", "stop", "forward", "left"};
     if (travelling) dr.named(NM[nav.cmd + 2], t);
     bool anyPump = seq.on[0] || seq.on[1] || seq.on[2] || seq.on[3];
-    dr.inhibit = !m.driveAllowed || anyPump;
+    dr.inhibit = !m.driveAllowed || anyPump || !arm.stowed();
     dr.tick(t);
     if (anyPump && (dr.left || dr.right)) overlap++;
+    if (!arm.stowed() && (dr.left || dr.right)) overlap++;            // never drive with the intake lowered
+    if (seq.on[0] && !arm.deployed()) overlap++;                      // never pump with the intake raised
     arm.tick(t);
   }
   CHECK(m.state == MS_COMPLETE);

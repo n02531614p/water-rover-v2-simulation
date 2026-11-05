@@ -24,7 +24,7 @@ water_processor:
     clean_full_pct: 95.0
     column_high_pct: 90.0             # same thresholds as filtration_monitor-1.ino
     column_resume_pct: 50.0
-    arm_deployed_deg: 80.0            # delivery pump interlock (Issue #8)
+    arm_deployed_deg: 80.0            # intake boom counts as lowered from here (Issue #1 / #6)
     river_min_x: 9.3                  # v2_village river bank at x = 10
 
 arm_controller:

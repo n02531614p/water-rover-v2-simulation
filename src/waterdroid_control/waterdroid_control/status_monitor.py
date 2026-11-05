@@ -243,7 +243,11 @@ class StatusMonitor(Node):
         elif topic == 'rover/mission/cmd':
             self.mission_pub.publish(String(data=str(low)))
         elif topic == 'rover/intake/cmd':
-            self.proc_pub.publish(String(data='intake:start' if low in ('start', 'on', '1') else 'intake:stop'))
+            if low in ('start', 'on', '1'):
+                self.arm_pub.publish(String(data='EXTEND'))      # lower the servo intake first
+                self.proc_pub.publish(String(data='intake:start'))
+            else:
+                self.proc_pub.publish(String(data='intake:stop'))
         elif topic == 'rover/filtration/cmd':
             if low == 'pause':
                 self.proc_pub.publish(String(data='intake:stop'))

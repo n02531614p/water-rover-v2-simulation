@@ -9,11 +9,11 @@ x=10, offload bays at (6,3), (6,-3) and (-3,-3)).
 
 Mission (state names are the Master System State shown on the Node-RED dashboard):
   STATE_EN_ROUTE_RIVER      drive east to the river bank
-  STATE_PUMPING             intake pump fills Stage 1, alum dosed for the batch
+  STATE_PUMPING             servo lowers the intake, pump fills Stage 1 + alum, intake raised
   STATE_FILTERING           wait for the gravity column to pass the batch to Stage 3
   STATE_DOSING_CHLORINE     chlorine into Stage 3 + contact time
   STATE_EN_ROUTE_HOMESTEAD  reverse off the bank, pivot, drive to each bay
-  STATE_DISPENSING          arm EXTEND -> delivery pump -> arm RETRACT
+  STATE_DISPENSING          delivery pump through the fixed nozzle
   STATE_RETURNING           back to the depot
   STATE_COMPLETE / STATE_PAUSED / STATE_EMERGENCY_STOP
 
@@ -281,21 +281,28 @@ class MissionNavigator(Node):
             self.get_logger().info(f'Arrived at river bank x={self.pose_x:.2f}' + self._drift_note())
             self._goto('PUMP')
 
-    # 2. intake pump + in-line alum dose (never while driving: brownout guard)
+    # 2. lower the servo intake boom, pump + in-line alum dose, raise the boom (never while driving)
     def _phase_pump(self):
         self.stop()
         self._set_state('STATE_PUMPING')
+        timed_out = self._elapsed() > self.action_timeout
         if self.sub == 0:
+            self.arm_pub.publish(String(data='EXTEND'))
+            self.sub, self.t0 = 1, self.now()
+        elif self.sub == 1 and (self.arm.get('deployed') or timed_out):
             alum_ml = self.raw_cap_ml / 1000.0 * self.alum_ml_per_l
             self.proc_pub.publish(String(data='intake:start'))
             self.proc_pub.publish(String(data=f'dose_alum:{alum_ml:.2f}'))
-            self.sub = 1
-        elif self._elapsed() > 1.0:
+            self.sub, self.t0 = 2, self.now()
+        elif self.sub == 2 and self._elapsed() > 1.0:
             done = not self.proc.get('intake', False) and self._proc_idle('alum_pump')
             if done or self._elapsed() > self.pump_timeout:
                 if self.proc.get('fault'):
                     self.get_logger().warn(f"intake ended with fault {self.proc.get('fault')}")
-                self._goto('FILTER')
+                self.arm_pub.publish(String(data='RETRACT'))
+                self.sub, self.t0 = 3, self.now()
+        elif self.sub == 3 and (self.arm.get('stowed') or timed_out):
+            self._goto('FILTER')
 
     # 3. wait for the gravity column to pass the batch to Stage 3
     def _phase_filter(self):
@@ -352,23 +359,17 @@ class MissionNavigator(Node):
             self.get_logger().info(f'Arrived at {name}' + self._drift_note())
             self._goto('DISPENSE')
 
-    # 8. arm EXTEND -> delivery pump -> arm RETRACT
+    # 8. delivery pump through the fixed nozzle
     def _phase_dispense(self):
         self.stop()
         self._set_state('STATE_DISPENSING')
         timed_out = self._elapsed() > self.action_timeout
         if self.sub == 0:
-            self.arm_pub.publish(String(data='EXTEND'))
-            self.sub, self.t0 = 1, self.now()
-        elif self.sub == 1 and (self.arm.get('deployed') or timed_out):
             remaining = len(BAYS) - self.bay_idx
             ml = self.proc.get('s3_ml', 0.0) / max(1, remaining)
             self.proc_pub.publish(String(data=f'deliver:{int(ml)}'))
-            self.sub, self.t0 = 2, self.now()
-        elif self.sub == 2 and self._elapsed() > 1.0 and (self._proc_idle('delivery_pump') or timed_out):
-            self.arm_pub.publish(String(data='RETRACT'))
-            self.sub, self.t0 = 3, self.now()
-        elif self.sub == 3 and (self.arm.get('stowed') or timed_out):
+            self.sub, self.t0 = 1, self.now()
+        elif self.sub == 1 and self._elapsed() > 1.0 and (self._proc_idle('delivery_pump') or timed_out):
             self.bay_idx += 1
             self._goto('DRIVE_BAY' if self.bay_idx < len(BAYS) else 'RETURN')
 

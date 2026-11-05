@@ -5,7 +5,7 @@
  *   #1  Intake & raw water collection      src/pump_cores.h   IntakeController   relay CH1
  *   #3  Chemical dosing (alum, chlorine)   src/pump_cores.h   DosingPump x2      relay CH2/CH3
  *   #5  Filtration column monitoring       src/motion_cores.h FiltrationMonitor  S1/S2/S3 ADC
- *   #6  Servo delivery arm (SG90)          src/motion_cores.h ServoArm           GPIO13
+ *   #6  Servo-driven INTAKE boom (SG90)    src/motion_cores.h ServoArm           GPIO13 (delivery nozzle is fixed)
  *   #8  Clean water delivery pump          src/pump_cores.h   DeliveryController relay CH4
  *   #9  4WD propulsion (L298N)             src/motion_cores.h DriveController    ENA/ENB + IN1-4
  *   #10 Power distribution & sequencing    src/power_core.h   PowerSequencer     all relays + rail
@@ -178,7 +178,11 @@ void onMqtt(char* topic, byte* payload, unsigned int len) {
     else if (lm == "emergency" || lm == "estop") setEstop(true, "power");
     else if (lm == "reset") setEstop(false, "power");
   }
-  else if (t == "rover/intake/cmd") { if (lm == "start" || lm == "on") startIntake(); else if (lm == "reset") intake.clearFault(); else intake.stop(); }
+  else if (t == "rover/intake/cmd") {             // manual intake: lower the servo boom first, pump once it is down
+    if (lm == "start" || lm == "on") { arm.command("EXTEND"); startIntake(); }
+    else if (lm == "reset") intake.clearFault();
+    else intake.stop();
+  }
   else if (t == "rover/nav/cmd") missionCommand(lm.startsWith("nav_") || lm.startsWith("calib_") ? lm : "nav_" + lm);
   else if (t == "rover/filtration/cmd") filt.manualPause = (lm == "pause");
   else if (t == "rover/dosing/cmd") {
@@ -259,13 +263,14 @@ void controlStep() {
   // ---- #5 filtration + #1 intake: fill = flow-sensor volume, dry run = no pulses ----
   filt.tick(now, s1, s2, s3, seq.on[CH_INTAKE]);
   float fillPct = intakeTargetMl > 0 ? 100.0f * flow.batchMl / intakeTargetMl : 100.0f;
-  intake.tick(now, seq.on[CH_INTAKE], fillPct, !filt.allowIntake || estop);
+  // the intake pump only runs with the servo boom lowered into the water
+  intake.tick(now, seq.on[CH_INTAKE], fillPct, !filt.allowIntake || estop || !arm.deployed());
 
   // ---- #3 dosing, #8 delivery ----
   alum.tick(now, seq.on[CH_ALUM]);
   chlorine.tick(now, seq.on[CH_CHLORINE]);
   bool manualDelivery = mission.state == MS_IDLE || mission.state == MS_PAUSED || mission.state == MS_COMPLETE;
-  delivery.tick(now, seq.on[CH_DELIVERY], atHomestead || manualDelivery, arm.deployed(), s3);
+  delivery.tick(now, seq.on[CH_DELIVERY], atHomestead || manualDelivery, true, s3);   // fixed nozzle: no arm interlock
 
   // ---- #10 power sequencing: pumps start one at a time, brownout guard ----
   seq.setWant(CH_INTAKE, intake.want);
@@ -300,7 +305,8 @@ void controlStep() {
 
   // ---- #9 drive: never together with a pump, never in e-stop ----
   bool anyPump = seq.on[0] || seq.on[1] || seq.on[2] || seq.on[3];
-  drive.inhibit = estop || !mission.driveAllowed || anyPump || seq.mode == PM_EMERGENCY;
+  // never drive with the intake lowered (the hose would drag) or while a pump runs
+  drive.inhibit = estop || !mission.driveAllowed || anyPump || !arm.stowed() || seq.mode == PM_EMERGENCY;
   drive.tick(now);
   digitalWrite(PIN_L298_IN1, drive.out.in1); digitalWrite(PIN_L298_IN2, drive.out.in2);
   digitalWrite(PIN_L298_IN3, drive.out.in3); digitalWrite(PIN_L298_IN4, drive.out.in4);

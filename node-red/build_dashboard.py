@@ -104,7 +104,7 @@ add({'id': BROKER, 'type': 'mqtt-broker', 'name': 'Rover broker', 'broker': 'loc
 
 for i, (tid, name, icon) in enumerate([
         ('wd_t_mission', 'Mission', 'dashboard'), ('wd_t_water', 'Water train', 'opacity'),
-        ('wd_t_arm', 'Arm & Delivery', 'pan_tool'), ('wd_t_drive', 'Drive & Map', 'directions_car'),
+        ('wd_t_arm', 'Intake & Delivery', 'pan_tool'), ('wd_t_drive', 'Drive & Map', 'directions_car'),
         ('wd_t_power', 'Power', 'battery_charging_full')]):
     ui_tab(tid, name, icon, i + 1)
 
@@ -114,7 +114,7 @@ group('wd_g_log', 'wd_t_mission', 'Mission log', 3)
 group('wd_g_intake', 'wd_t_water', 'Intake (#1)', 1, 4)
 group('wd_g_filter', 'wd_t_water', 'Filtration (#5)', 2, 6)
 group('wd_g_dose', 'wd_t_water', 'Chemical dosing (#3)', 3, 6)
-group('wd_g_arm', 'wd_t_arm', 'Delivery arm (#6)', 1)
+group('wd_g_arm', 'wd_t_arm', 'Intake arm - servo (#6)', 1)
 group('wd_g_deliv', 'wd_t_arm', 'Clean water delivery (#8)', 2)
 group('wd_g_drive', 'wd_t_drive', 'Teleoperation D-pad (#9)', 1, 4)
 group('wd_g_map', 'wd_t_drive', 'Position & fixed route (#7)', 2, 8)
@@ -178,7 +178,7 @@ add({'id': 'wd_log_note', 'type': 'comment', 'z': TAB, 'name': 'Log file: ~/.nod
 
 # ======================================================================= Intake (#1)
 mqtt_out('wd_intake_out', 'rover/intake/cmd', 'intake')
-button('wd_btn_in_start', 'wd_g_intake', 'Manual Water Intake', 'start', 'str', ['wd_intake_out'], 'intake', 1,
+button('wd_btn_in_start', 'wd_g_intake', 'Manual Water Intake (lowers intake)', 'start', 'str', ['wd_intake_out'], 'intake', 1,
        bg='#2980b9', width=4, icon='water_drop')
 button('wd_btn_in_stop', 'wd_g_intake', 'Stop', 'stop', 'str', ['wd_intake_out'], 'intake', 2, width=2)
 button('wd_btn_in_rst', 'wd_g_intake', 'Reset fault', 'reset', 'str', ['wd_intake_out'], 'intake', 3, width=2)
@@ -242,19 +242,19 @@ gauge('wd_cl_stock', 'wd_g_dose', 'Chlorine stock', 'mL', 0, 250, 9, 'dose', seg
 
 # ======================================================================= Arm (#6)
 mqtt_out('wd_arm_out', 'rover/arm/cmd', 'arm')
-button('wd_btn_ext', 'wd_g_arm', 'Extend Arm', 'EXTEND', 'str', ['wd_arm_out'], 'arm', 1, width=3, icon='call_made')
-button('wd_btn_ret', 'wd_g_arm', 'Retract Arm', 'RETRACT', 'str', ['wd_arm_out'], 'arm', 2, width=3,
-       icon='call_received')
-slider('wd_arm_slider', 'wd_g_arm', 'Arm angle (0 stow - 90 deploy)', 0, 90, 3, 'arm', ['wd_arm_angle'])
+button('wd_btn_ext', 'wd_g_arm', 'Lower intake', 'EXTEND', 'str', ['wd_arm_out'], 'arm', 1, width=3, icon='south')
+button('wd_btn_ret', 'wd_g_arm', 'Raise intake', 'RETRACT', 'str', ['wd_arm_out'], 'arm', 2, width=3,
+       icon='north')
+slider('wd_arm_slider', 'wd_g_arm', 'Intake angle (0 raised - 90 in the water)', 0, 90, 3, 'arm', ['wd_arm_angle'])
 func('wd_arm_angle', 'ANGLE:n', "let a = Math.max(0, Math.min(90, Math.round(Number(msg.payload))));\n"
      "if (!Number.isFinite(a)) return null;\nmsg.payload = 'ANGLE:' + a;\nreturn msg;", 1, [['wd_arm_out']], 'arm')
 mqtt_in('wd_arm_in', 'rover/arm/status', ['wd_arm_fmt'], 'arm')
 func('wd_arm_fmt', 'Arm status', "const s = msg.payload || {};\n"
-     "return [{payload: Number(s.angle||0)}, {payload: s.deployed ? 'DEPLOYED' : (s.stowed ? 'STOWED' : (s.moving ? 'MOVING' : 'HOLD'))}];",
+     "return [{payload: Number(s.angle||0)}, {payload: s.deployed ? 'IN THE WATER' : (s.stowed ? 'RAISED (safe to drive)' : (s.moving ? 'MOVING' : 'HOLD'))}];",
      2, [['wd_arm_gauge'], ['wd_arm_txt']], 'arm')
-gauge('wd_arm_gauge', 'wd_g_arm', 'Arm angle', 'deg', 0, 90, 4, 'arm', seg=('30', '80'),
+gauge('wd_arm_gauge', 'wd_g_arm', 'Intake angle', 'deg', 0, 90, 4, 'arm', seg=('30', '80'),
       colors=['#7f8c8d', '#e6a23c', '#2ecc71'])
-text('wd_arm_txt', 'wd_g_arm', 'Arm', 5, 'arm', width=3)
+text('wd_arm_txt', 'wd_g_arm', 'Intake', 5, 'arm', width=3)
 
 # ======================================================================= Delivery (#8)
 mqtt_out('wd_deliv_out', 'rover/delivery/cmd', 'deliv')
@@ -270,8 +270,8 @@ func('wd_deliv_fmt', 'Delivery status', "const s = msg.payload || {};\n"
      2, [['wd_clean_gauge'], ['wd_deliv_txt']], 'deliv')
 gauge('wd_clean_gauge', 'wd_g_deliv', 'Clean water on board', 'mL', 0, 400, 4, 'deliv', seg=('40', '120'))
 text('wd_deliv_txt', 'wd_g_deliv', 'Delivery', 5, 'deliv')
-add({'id': 'wd_deliv_note', 'type': 'comment', 'z': TAB, 'name': 'Delivery pump only runs with the arm deployed',
-     'info': 'Interlock in firmware (DeliveryController) and in the sim (water_processor).', **pos(3, 'deliv'),
+add({'id': 'wd_deliv_note', 'type': 'comment', 'z': TAB, 'name': 'Fixed nozzle: park the container under it',
+     'info': 'The servo moves the intake, not the outlet. The intake pump only runs with the intake lowered; the rover only drives with it raised.', **pos(3, 'deliv'),
      'wires': []})
 
 # ======================================================================= Drive (#9)

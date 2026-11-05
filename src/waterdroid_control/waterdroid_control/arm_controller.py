@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Stage 4 delivery-arm controller (Issue #6) - SG90 servo on the arm_servo_joint.
+"""Intake-boom controller (Issue #6) - the SG90 servo lowers / raises the intake hose and pump.
 
 Speaks the same text protocol as robotic_arm.ino / the Node-RED arm flow:
-    EXTEND        -> 90 deg (deploy over the homestead container)
-    RETRACT       -> 0 deg  (stowed)
+    EXTEND        -> 90 deg (intake lowered into the river)
+    RETRACT       -> 0 deg  (intake raised / stowed for driving)
     ANGLE:<0-90>  -> any angle in between
 
 and moves with the same smooth interpolation as the firmware (1 deg every 20 ms).

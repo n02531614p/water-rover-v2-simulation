@@ -27,7 +27,7 @@ struct MissionInputs {
   bool  intakeBusy = false;     // IntakeController.want or PUMPING
   bool  alumBusy = false, chlorineBusy = false;
   float s1Pct = 0, s2Pct = 0;   // filtration levels
-  bool  armDeployed = false, armStowed = true;
+  bool  armDeployed = false, armStowed = true;   // servo INTAKE boom (lowered into the river / raised)
   bool  deliveryBusy = false;
   float cleanMl = 0;            // Stage 3 volume estimate
 };
@@ -36,7 +36,7 @@ struct MissionActions {          // one-shot requests, cleared by the caller aft
   bool  startIntake = false;
   float doseAlumMl = 0;          // > 0 -> start an alum dose
   float doseChlorineMl = 0;      // > 0 -> start a chlorine dose
-  bool  armExtend = false, armRetract = false;
+  bool  armExtend = false, armRetract = false;    // lower / raise the intake
   float deliverMl = 0;           // > 0 -> request a delivery
   bool  stopAll = false;
   void clear() { *this = MissionActions(); }
@@ -84,12 +84,15 @@ struct MissionCore {
   void tick(uint32_t now, const MissionInputs& in) {
     uint32_t el = now - t0;
     switch (state) {
-      case MS_PUMPING:
-        if (sub == 0) {
+      case MS_PUMPING:                       // servo lowers the intake, pump + alum, raise it again
+        if (sub == 0) { act.armExtend = true; sub = 1; t0 = now; }
+        else if (sub == 1 && (in.armDeployed || el > cfg.actionTimeoutMs)) {
           act.startIntake = true;
           act.doseAlumMl = cfg.batchMl / 1000.0f * cfg.alumMlPerL;
-          sub = 1; t0 = now;
-        } else if (el > 1000 && ((!in.intakeBusy && !in.alumBusy) || el > cfg.pumpTimeoutMs)) {
+          sub = 2; t0 = now;
+        } else if (sub == 2 && el > 1000 && ((!in.intakeBusy && !in.alumBusy) || el > cfg.pumpTimeoutMs)) {
+          act.armRetract = true; sub = 3; t0 = now;
+        } else if (sub == 3 && (in.armStowed || el > cfg.actionTimeoutMs)) {
           go(MS_FILTERING, now);
         }
         break;
@@ -102,15 +105,12 @@ struct MissionCore {
         else if (sub == 1 && el > 500 && !in.chlorineBusy) { sub = 2; t0 = now; }
         else if (sub == 2 && el >= cfg.contactMs) { stop = 0; go(MS_EN_ROUTE_HOMESTEAD, now); }
         break;
-      case MS_DISPENSING:
-        if (sub == 0) { act.armExtend = true; sub = 1; t0 = now; }
-        else if (sub == 1 && (in.armDeployed || el > cfg.actionTimeoutMs)) {
+      case MS_DISPENSING:                    // fixed nozzle: share the clean water between the stops left
+        if (sub == 0) {
           uint8_t left = cfg.homesteads > stop ? cfg.homesteads - stop : 1;
           act.deliverMl = in.cleanMl / left;
-          sub = 2; t0 = now;
-        } else if (sub == 2 && el > 500 && (!in.deliveryBusy || el > cfg.actionTimeoutMs)) {
-          act.armRetract = true; sub = 3; t0 = now;
-        } else if (sub == 3 && (in.armStowed || el > cfg.actionTimeoutMs)) {
+          sub = 1; t0 = now;
+        } else if (sub == 1 && el > 500 && (!in.deliveryBusy || el > cfg.actionTimeoutMs)) {
           stop++;
           go(stop < cfg.homesteads ? MS_EN_ROUTE_HOMESTEAD : MS_RETURNING, now);
         }

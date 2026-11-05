@@ -174,7 +174,7 @@
       "boundLiterals": {
         "__out__": "False"
       },
-      "description": "arm deployed"
+      "description": "intake lowered"
     },
     {
       "id": "in14",
@@ -187,7 +187,7 @@
       "boundLiterals": {
         "__out__": "True"
       },
-      "description": "arm stowed"
+      "description": "intake raised"
     },
     {
       "id": "in15",

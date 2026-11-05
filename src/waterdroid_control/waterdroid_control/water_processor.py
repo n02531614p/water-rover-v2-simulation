@@ -7,7 +7,7 @@ uses (firmware/waterdroid_esp32). It lets the mission, the dashboard and the
 Node-RED flows be exercised end-to-end in simulation.
 
 Hardware it stands in for (relay channel in brackets):
-  Issue #1  5 V submersible intake pump        [CH1] -> Stage 1 raw tank
+  Issue #1  5 V submersible intake pump        [CH1] -> Stage 1 raw tank (on the SG90 intake boom)
   Issue #3  5 V alum peristaltic dosing pump    [CH2] -> Stage 1
             5 V chlorine dosing pump            [CH3] -> Stage 3
   Issue #5  Stage 2 gravity filtration column   (no pump, gravity flow S1 -> S3)
@@ -17,7 +17,7 @@ Interface
   sub  /waterdroid/cmd          std_msgs/String   commands, see _on_cmd()
   sub  /waterdroid/estop        std_msgs/Bool     True = all pumps off and latched
   sub  /ground_truth/odom       nav_msgs/Odometry used to know if the hose is in the river
-  sub  /joint_states            sensor_msgs/JointState  delivery-arm angle interlock
+  sub  /joint_states            sensor_msgs/JointState  intake-boom angle (water only with the boom lowered)
   pub  /waterdroid/process_state std_msgs/String  JSON, 5 Hz
 """
 import json
@@ -60,7 +60,7 @@ class WaterProcessor(Node):
         self.clean_full_pct = p('clean_full_pct', 95.0).value
         self.column_high_pct = p('column_high_pct', 90.0).value
         self.column_resume_pct = p('column_resume_pct', 50.0).value
-        self.arm_deployed_rad = math.radians(p('arm_deployed_deg', 80.0).value)
+        self.arm_deployed_rad = math.radians(p('arm_deployed_deg', 80.0).value)   # intake boom counts as lowered
         # Where water is reachable: rover x >= river_min_x (bank of v2_village is at x=10)
         self.river_min_x = p('river_min_x', 9.3).value
         self.alum_stock = p('alum_stock_ml', 250.0).value
@@ -165,9 +165,7 @@ class WaterProcessor(Node):
             if arg == 'stop':
                 self.deliver_left_ml = 0.0
                 self._event('delivery stop')
-            elif self.arm_angle < self.arm_deployed_rad:
-                self._event('delivery rejected: arm not deployed')
-            else:
+            else:                                   # fixed nozzle: no arm interlock
                 try:
                     self.deliver_left_ml = max(0.0, float(arg))
                 except ValueError:
@@ -201,7 +199,9 @@ class WaterProcessor(Node):
             self.overflow_latch = False
 
         # ---- CH1 intake pump (Issue #1) ----
-        in_river = self.pose_x is not None and self.pose_x >= self.river_min_x
+        # water reaches the pump only when the rover is at the bank AND the servo boom is lowered
+        boom_down = self.arm_angle >= self.arm_deployed_rad
+        in_river = self.pose_x is not None and self.pose_x >= self.river_min_x and boom_down
         want_intake = (self.intake_requested and raw_pct < self.raw_full_pct
                        and not self.overflow_latch and self.fault != 'DRY_RUN')
         # A batch is what the clean tank can hold: stop pumping once the water already
@@ -260,9 +260,6 @@ class WaterProcessor(Node):
             self.clean_ml = min(self.clean_cap, self.clean_ml + d)
 
         # ---- CH4 delivery pump Stage 3 -> container (Issue #8) ----
-        if self.deliver_left_ml > 0 and self.arm_angle < self.arm_deployed_rad * 0.9:
-            self.deliver_left_ml = 0.0
-            self._event('delivery aborted: arm left deploy position')
         self.relay[3] = self.deliver_left_ml > 1e-6 and self.clean_ml > 1.0
         if self.deliver_left_ml > 1e-6 and self.clean_ml <= 1.0:
             self.deliver_left_ml = 0.0
