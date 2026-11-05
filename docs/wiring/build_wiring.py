@@ -137,7 +137,7 @@ def power():
     s.dot(560, 290)
     s.note(568, 200, 'ESP32 GND joins the GND bus')
     # loads hanging from the rail
-    loads = [(250, 'L298N', '+12V (Vs) and +5V'), (390, 'Relay module', 'JD-VCC + 4 x COM'),
+    loads = [(250, 'L298N', '+12V (Vs) and +5V'), (390, 'Relay boards A+B', 'JD-VCC + 4 x COM'),
              (530, 'SG90 servo', 'red / brown'), (670, 'Flow sensor', 'red / black')]
     for x, name, sub in loads:
         s.wire([(x, 250), (x, 380)], 'w5')
@@ -202,48 +202,58 @@ def drive():
 
 # =========================================================== 3. relays and pumps
 def relays():
-    s = Sheet(1000, 620, 'Relays: ESP32 to 4-channel relay module to four pumps')
-    left = ['3V3', 'GND', 'GPIO23', 'GPIO19', 'GPIO18', 'GPIO4']
-    rl = ['VCC', 'GND', 'IN1', 'IN2', 'IN3', 'IN4']
-    esp = s.box(30, 120, 170, 260, 'ESP32', '', right=left, start=170, pitch=34)
-    rm = s.box(380, 120, 200, 460, '4-ch relay module', 'active LOW', left=rl, start=170, pitch=34)
-    for a, b, c in zip(left, rl, ['w33', 'wg', 'wr', 'wr', 'wr', 'wr']):
-        s.wire([esp[a], rm[b]], c)
-    # JD-VCC on top
-    s.add('<circle cx="540" cy="120" r="3.5" class="pin"/>'); s.text(534, 112, 'JD-VCC', 'p', 'end')
-    s.wire([(540, 120), (540, 70), (720, 70)], 'w5')
-    s.cross(40, 420, 'remove the VCC to JD-VCC jumper on the relay board')
-    # contacts on the right
-    names = [('CH1', 'INTAKE PUMP', '#1'), ('CH2', 'ALUM PUMP', '#3'), ('CH3', 'CHLORINE PUMP', '#3'), ('CH4', 'DELIVERY PUMP', '#8')]
-    s.wire([(720, 70), (720, 570)], 'w5', bus=True); s.text(728, 64, '5 V rail', 's')
-    s.wire([(960, 100), (960, 570)], 'wg', bus=True); s.text(964, 94, 'GND', 's', 'end')
-    for i, (ch, pump, issue) in enumerate(names):
-        y = 150 + i * 110
-        com, no = (580, y), (580, y + 26)
-        s.add(f'<circle cx="580" cy="{y}" r="3.5" class="pin"/><circle cx="580" cy="{y + 26}" r="3.5" class="pin"/>')
-        s.text(572, y + 4, f'{ch} COM', 'p', 'end'); s.text(572, y + 30, f'{ch} NO', 'p', 'end')
-        s.wire([com, (720, y)], 'w5'); s.dot(720, y)
-        # pump box
-        px, py = 780, y - 14
-        s.add(f'<rect x="{px}" y="{py}" width="140" height="64" rx="8" class="pump"/>')
-        s.text(px + 70, py + 26, pump, 't', 'middle'); s.text(px + 70, py + 44, f'5 V pump . Issue {issue}', 's', 'middle')
-        s.wire([no, (755, y + 26), (755, py + 18), (px, py + 18)], 'wm')
-        s.text(px - 6, py + 12, '+', 'p', 'end')
-        s.wire([(px + 140, py + 46), (960, py + 46)], 'wg'); s.dot(960, py + 46)
-        s.text(px + 146, py + 40, '-', 'p')
-        # flyback diode across the pump: cathode on the + lead, anode to GND
-        s.dot(755, y + 26)
-        s.wire([(755, y + 26), (755, y + 40)], 'wm')
-        s.diode(755, y + 40, y + 76)
-        s.wire([(755, y + 76), (755, y + 84), (940, y + 84), (940, py + 46)], 'wg'); s.dot(940, py + 46)
-    s.note(30, 460, 'Pin order CH1-CH4 = intake, alum, chlorine, delivery (power_core.h).')
-    s.note(30, 482, 'Flyback diode across each pump: stripe (cathode) to +.')
-    s.note(30, 504, 'JD-VCC on the 5 V rail, VCC on 3.3 V:')
-    s.note(30, 524, 'then the 3.3 V GPIOs drive the opto-couplers.')
+    s = Sheet(1000, 840, 'Relays: ESP32 to two 2-channel relay boards to four pumps')
+    esp = s.box(30, 160, 170, 250, 'ESP32', '', right=['3V3', 'GND', 'GPIO23', 'GPIO19', 'GPIO18', 'GPIO4'],
+                start=210, pitch=34)
+    boards = [('A', 70, [('CH1', 'INTAKE PUMP', '#1'), ('CH2', 'ALUM PUMP', '#3')]),
+              ('B', 430, [('CH3', 'CHLORINE PUMP', '#3'), ('CH4', 'DELIVERY PUMP', '#8')])]
+    pins = {}
+    for name, by, chans in boards:
+        pins[name] = s.box(360, by, 210, 270, f'2-channel relay board {name}', 'SRD-05VDC . active LOW',
+                           left=['VCC', 'GND', 'IN1', 'IN2'], start=by + 70, pitch=34)
+        s.add(f'<circle cx="520" cy="{by}" r="3.5" class="pin"/>'); s.text(514, by - 8, 'JD-VCC', 'p', 'end')
+        s.wire([(520, by), (520, by - 22), (720, by - 22)], 'w5'); s.dot(720, by - 22)
+    # 3.3 V and GND to both boards, signals to IN1 / IN2
+    a, b = pins['A'], pins['B']
+    s.wire([esp['3V3'], (250, 210), (250, a['VCC'][1]), a['VCC']], 'w33')
+    s.wire([(250, 210), (250, b['VCC'][1]), b['VCC']], 'w33'); s.dot(250, 210)
+    s.wire([esp['GND'], (280, 244), (280, a['GND'][1]), a['GND']], 'wg')
+    s.wire([(280, 244), (280, b['GND'][1]), b['GND']], 'wg'); s.dot(280, 244)
+    s.wire([esp['GPIO23'], (310, 278), (310, a['IN1'][1]), a['IN1']], 'wr')
+    s.wire([esp['GPIO19'], (330, 312), (330, a['IN2'][1]), a['IN2']], 'wr')
+    s.wire([esp['GPIO18'], (310, 346), (310, b['IN1'][1]), b['IN1']], 'wr')
+    s.wire([esp['GPIO4'], (330, 380), (330, b['IN2'][1]), b['IN2']], 'wr')
+    s.wire([(720, 30), (720, 740)], 'w5', bus=True); s.text(728, 26, '5 V rail', 's')
+    s.wire([(960, 60), (960, 740)], 'wg', bus=True); s.text(964, 54, 'GND', 's', 'end')
+    for name, by, chans in boards:
+        for k, (ch, pump, issue) in enumerate(chans):
+            y = by + 70 + k * 110
+            com, no = (570, y), (570, y + 26)
+            s.add(f'<circle cx="570" cy="{y}" r="3.5" class="pin"/><circle cx="570" cy="{y + 26}" r="3.5" class="pin"/>')
+            s.text(562, y + 4, f'K{k + 1} COM', 'p', 'end'); s.text(562, y + 30, f'K{k + 1} NO', 'p', 'end')
+            s.wire([com, (720, y)], 'w5'); s.dot(720, y)
+            px, py = 780, y - 14
+            s.add(f'<rect x="{px}" y="{py}" width="140" height="64" rx="8" class="pump"/>')
+            s.text(px + 70, py + 26, pump, 't', 'middle'); s.text(px + 70, py + 44, f'{ch} . Issue {issue}', 's', 'middle')
+            s.wire([no, (755, y + 26), (755, py + 18), (px, py + 18)], 'wm')
+            s.text(px - 6, py + 12, '+', 'p', 'end')
+            s.wire([(px + 140, py + 46), (960, py + 46)], 'wg'); s.dot(960, py + 46)
+            s.text(px + 146, py + 40, '-', 'p')
+            s.dot(755, y + 26)
+            s.wire([(755, y + 26), (755, y + 40)], 'wm')
+            s.diode(755, y + 40, y + 76)
+            s.wire([(755, y + 76), (755, y + 84), (940, y + 84), (940, py + 46)], 'wg'); s.dot(940, py + 46)
+    s.cross(40, 640, 'BOTH boards: remove the JD-VCC jumper')
+    lines = ['JD-VCC (+ the GND beside it) to the 5 V rail,', 'VCC to ESP32 3V3: the 3.3 V GPIOs then',
+             'drive the opto-couplers.', '', 'Board A: IN1 = CH1 intake, IN2 = CH2 alum.',
+             'Board B: IN1 = CH3 chlorine, IN2 = CH4 delivery.', '',
+             'Flyback diode across each pump, stripe to +.', 'Use the NO and COM screws; leave NC empty.']
+    for i, t in enumerate(lines):
+        if t:
+            s.note(30, 668 + i * 18, t)
     return s
 
 
-# =========================================================== 4. servo, flow sensor, rail sense
 def sensors():
     s = Sheet(1000, 470, 'Servo, flow sensor and battery sense')
     # SG90
@@ -290,8 +300,9 @@ SHEETS = [('power', power, 'Power distribution',
            'The four TT motors run in pairs: both left motors in parallel on OUT1/OUT2, both right motors on '
            'OUT3/OUT4. ENA and ENB carry PWM from the ESP32, IN1-IN4 set direction.'),
           ('relays', relays, 'Relays and pumps (#1 #3 #8 #10)',
-           'The four relays switch the four pumps, never the motors. Each relay passes the 5 V rail from COM to NO '
-           'and on to its pump; the pump returns to ground.'),
+           'Two 2-channel relay boards give the four channels: board A runs the intake and alum pumps, board B the '
+           'chlorine and delivery pumps. Each relay passes the 5 V rail from COM to NO and on to its pump; the pump '
+           'returns to ground. The relays never switch the motors.'),
           ('sensors', sensors, 'Servo, flow sensor, battery sense (#5 #6 #10)',
            'The servo signal and the flow-sensor pulse are the only other ESP32 inputs and outputs. Both sensors '
            'that feed analog or 5 V signals into the ESP32 go through dividers.')]
@@ -364,10 +375,10 @@ code{font:12.5px var(--fm);background:var(--chip);padding:1px 5px;border-radius:
 
 PINS = [('14', 'L298N ENA (left PWM)', '--pwm'), ('27 / 26', 'L298N IN1 / IN2 (left direction)', '--dir'),
         ('25 / 33', 'L298N IN3 / IN4 (right direction)', '--dir'), ('32', 'L298N ENB (right PWM)', '--pwm'),
-        ('23', 'Relay IN1 - intake pump', '--rly'), ('19', 'Relay IN2 - alum pump', '--rly'),
-        ('18', 'Relay IN3 - chlorine pump', '--rly'), ('4', 'Relay IN4 - delivery pump', '--rly'),
+        ('23', 'Relay board A IN1 - intake pump', '--rly'), ('19', 'Relay board A IN2 - alum pump', '--rly'),
+        ('18', 'Relay board B IN1 - chlorine pump', '--rly'), ('4', 'Relay board B IN2 - delivery pump', '--rly'),
         ('13', 'SG90 signal (orange)', '--srv'), ('34', 'Flow sensor pulse via 10k / 20k', '--flw'),
-        ('39 (VN)', '5 V rail sense, 10k / 10k divider', '--ana'), ('3V3', 'Relay module VCC', '--v33'),
+        ('39 (VN)', '5 V rail sense, 10k / 10k divider', '--ana'), ('3V3', 'VCC of both relay boards', '--v33'),
         ('35 / 36', 'free: optional level sensors', '--muted'), ('16 / 17 · 21 / 22', 'reserved: GPS · compass (#7)', '--muted')]
 
 LEGEND = [('5 V rail', '--v5'), ('GND', '--gnd'), ('3.3 V', '--v33'), ('PWM', '--pwm'), ('Direction', '--dir'),
@@ -376,7 +387,7 @@ LEGEND = [('5 V rail', '--v5'), ('GND', '--gnd'), ('3.3 V', '--v33'), ('PWM', '-
 
 CHECK = ['Power bank off. Wire every GND to one common bus first.',
          'L298N: remove the ENA, ENB and 5V-EN jumpers; +12V and +5V both on the 5 V rail.',
-         'Relay board: remove the VCC to JD-VCC jumper; VCC to ESP32 3V3, JD-VCC to the 5 V rail.',
+         'Both relay boards: remove the JD-VCC jumper; VCC to ESP32 3V3, JD-VCC to the 5 V rail.',
          'Fit a flyback diode across each pump (stripe to +) and the 1000 uF cap across the rail.',
          'Flow sensor yellow wire through the 10k / 20k divider to GPIO34, never straight in.',
          'ESP32 on its own USB output. Flash, open the Serial Monitor at 115200, check the boot line.',

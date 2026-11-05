@@ -15,11 +15,11 @@
 #define PIN_L298_IN4   33   // right dir B
 #define PIN_L298_ENB   32   // right side PWM  (remove the ENB jumper)
 
-// ---- Issue #10 4-channel 5 V relay module (active LOW) = the four pumps ----
-#define PIN_RELAY_CH1  23   // CH1 intake pump      (Issue #1)
-#define PIN_RELAY_CH2  19   // CH2 alum dosing pump (Issue #3)
-#define PIN_RELAY_CH3  18   // CH3 chlorine pump    (Issue #3)
-#define PIN_RELAY_CH4   4   // CH4 delivery pump    (Issue #8)
+// ---- Issue #10 relays (active LOW) = the four pumps, on two 2-channel boards ----
+#define PIN_RELAY_CH1  23   // board A IN1: intake pump      (Issue #1)
+#define PIN_RELAY_CH2  19   // board A IN2: alum dosing pump (Issue #3)
+#define PIN_RELAY_CH3  18   // board B IN1: chlorine pump    (Issue #3)
+#define PIN_RELAY_CH4   4   // board B IN2: delivery pump    (Issue #8)
 #define RELAY_ACTIVE_LOW 1
 
 // ---- Issue #6  SG90 delivery-arm servo ----

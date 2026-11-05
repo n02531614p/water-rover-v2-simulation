@@ -10,7 +10,7 @@ uses the numbers on this page.
 |---|------|-------------------|-------|
 | 1 | ESP32 DevKit V1 (30-pin) | #11 "autonomous brain", #12 Wi-Fi | one board runs everything |
 | 1 | 10,000 mAh 5 V USB power bank (2 outputs preferred) | #10 | see power notes |
-| 1 | 4-channel 5 V relay module (active LOW, opto-isolated) | #10 | CH1–CH4 = the four pumps |
+| 2 | 2-channel 5 V relay boards (SRD-05VDC, active LOW, opto-isolated) | #10 | board A = CH1 intake + CH2 alum, board B = CH3 chlorine + CH4 delivery |
 | 1 | L298N double H-bridge | #9 | left motor pair on A, right pair on B |
 | 4 | 5 V TT geared DC motors + 65 mm off-road wheels | #9 | skid steer, 2 motors in parallel per side |
 | 1 | 5 V submersible intake pump + coarse mesh pre-filter + 40–50 cm flexible hose | #1 | relay CH1 |
@@ -74,10 +74,10 @@ uses the numbers on this page.
 | 27 / 26 | L298N **IN1 / IN2** (left direction) | #9 |
 | 25 / 33 | L298N **IN3 / IN4** (right direction) | #9 |
 | 32 | L298N **ENB** (right PWM — remove ENB jumper) | #9 |
-| 23 | Relay **IN1** → intake pump | #1 |
-| 19 | Relay **IN2** → alum dosing pump | #3 |
-| 18 | Relay **IN3** → chlorine dosing pump | #3 |
-| 4 | Relay **IN4** → delivery pump | #8 |
+| 23 | Relay board A **IN1** → intake pump (CH1) | #1 |
+| 19 | Relay board A **IN2** → alum dosing pump (CH2) | #3 |
+| 18 | Relay board B **IN1** → chlorine dosing pump (CH3) | #3 |
+| 4 | Relay board B **IN2** → delivery pump (CH4) | #8 |
 | 13 | SG90 signal (orange) | #6 |
 | 34 | **Water-flow sensor** pulse (yellow) via 10k/20k divider | #1 #5 |
 | 35 | optional Stage 2 column level sensor (analog) | #5 |
@@ -117,8 +117,9 @@ Full wiring diagrams: `docs/wiring/power.svg`, `drive.svg`, `relays.svg`, `senso
 * **L298N on 5 V:** the L298N drops ~1.5–2 V, so the TT motors see only ~3–3.5 V and run slowly. The firmware
   uses a minimum PWM of 90/255 to stop stall-hum. If the rover is too slow, a TB6612FNG (MOSFET, ~0.2 V drop)
   is a drop-in swap for the same pins (PWMA/PWMB, AIN1/2, BIN1/2).
-* **Relay board:** remove the JD-VCC jumper, feed JD-VCC from the 5 V rail and VCC from the ESP32 3.3 V pin
-  so the 3.3 V GPIOs can drive the opto-couplers. The board is active-LOW: the firmware drives all four
+* **Relay boards (two 2-channel):** on both, remove the JD-VCC jumper, feed JD-VCC (and the GND next to it)
+  from the 5 V rail, and VCC from the ESP32 3.3 V pin so the 3.3 V GPIOs can drive the opto-couplers. Both
+  boards share 3V3 and GND from the ESP32; use the NO and COM screw terminals. The board is active-LOW: the firmware drives all four
   inputs HIGH before anything else at boot so no pump clicks on.
 * **Intake interlocks.** The intake pump only runs with the servo intake lowered, and the rover only drives with it
   raised (a lowered hose would drag).
