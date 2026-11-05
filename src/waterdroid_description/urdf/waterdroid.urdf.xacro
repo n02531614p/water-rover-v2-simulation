@@ -1,91 +1,360 @@
 <?xml version="1.0"?>
+<!--
+  Waterdroid / Water Rover v2 - 4WD mobile water-treatment rover
+  Matches the as-built hardware (see docs/HARDWARE.md):
+    * Two-deck wooden chassis on standoffs
+    * Four 5 V TT geared DC motors + 65 mm off-road wheels (skid steer via L298N)
+    * Stage 1 raw tank, Stage 2 gravity filtration column, Stage 3 disinfection/clean tank
+    * 5 V pumps: submersible intake, alum dosing (peristaltic), chlorine dosing, delivery
+    * Coarse mesh pre-filter + 40-50 cm flexible intake hose
+    * ESP32, 4-channel relay module, L298N driver, 10,000 mAh 5 V power bank
+    * Stage 4 delivery arm on an SG90 servo (0 deg = stowed, 90 deg = deployed)
+
+  Gazebo (Harmonic / Jazzy) systems used:
+    DiffDrive (4 joints, skid steer)  -> /cmd_vel, /odom, /tf
+    OdometryPublisher (ground truth)  -> /ground_truth/odom
+    JointStatePublisher               -> /joint_states
+    JointPositionController (servo)   <- /arm_servo/cmd_pos  (rad)
+-->
 <robot name="waterdroid" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+  <!-- ===================== Dimensions (metres / kg) ===================== -->
+  <xacro:property name="PI" value="3.14159265"/>
+
+  <xacro:property name="wheel_radius" value="0.0325"/>   <!-- 65 mm tyre -->
+  <xacro:property name="wheel_width"  value="0.026"/>
+  <xacro:property name="wheel_mass"   value="0.05"/>
+  <xacro:property name="wheel_base"   value="0.20"/>     <!-- front-rear axle distance -->
+  <xacro:property name="wheel_track"  value="0.25"/>     <!-- left-right wheel centres -->
+
+  <xacro:property name="lower_l" value="0.30"/>
+  <xacro:property name="lower_w" value="0.18"/>
+  <xacro:property name="upper_l" value="0.36"/>
+  <xacro:property name="upper_w" value="0.24"/>
+  <xacro:property name="deck_t"  value="0.006"/>
+  <xacro:property name="deck_gap" value="0.060"/>        <!-- standoff height -->
+
+  <!-- base_link = centre of the lower deck -->
+  <xacro:property name="base_z" value="0.050"/>          <!-- lower deck height above ground -->
+  <xacro:property name="upper_z" value="${deck_gap}"/>   <!-- upper deck relative to base_link -->
+  <xacro:property name="top" value="${upper_z + deck_t/2}"/>  <!-- top surface of upper deck -->
+
+  <xacro:property name="tank_size" value="0.095"/>       <!-- ~0.86 L cube, 500-1000 mL class -->
+  <xacro:property name="water_mass" value="0.6"/>        <!-- tank + typical water load -->
+
+  <!-- ===================== Materials ===================== -->
+  <material name="wood"><color rgba="0.82 0.62 0.42 1"/></material>
+  <material name="black"><color rgba="0.05 0.05 0.05 1"/></material>
+  <material name="yellow"><color rgba="0.95 0.80 0.10 1"/></material>
+  <material name="raw_water"><color rgba="0.55 0.70 0.85 0.55"/></material>
+  <material name="clean_water"><color rgba="0.70 0.90 1.00 0.45"/></material>
+  <material name="filter"><color rgba="0.90 0.90 0.90 0.70"/></material>
+  <material name="hose"><color rgba="0.55 0.75 0.90 1"/></material>
+  <material name="pcb_blue"><color rgba="0.10 0.25 0.70 1"/></material>
+  <material name="pcb_red"><color rgba="0.75 0.10 0.10 1"/></material>
+  <material name="pcb_dark"><color rgba="0.10 0.10 0.10 1"/></material>
+  <material name="servo_blue"><color rgba="0.20 0.40 0.90 1"/></material>
+  <material name="nozzle"><color rgba="1.00 0.55 0.10 1"/></material>
+  <material name="metal"><color rgba="0.70 0.70 0.72 1"/></material>
+
+  <!-- ===================== Macros ===================== -->
+  <xacro:macro name="box_inertia" params="m x y z">
+    <inertial>
+      <mass value="${m}"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="${m*(y*y+z*z)/12}" ixy="0" ixz="0"
+               iyy="${m*(x*x+z*z)/12}" iyz="0"
+               izz="${m*(x*x+y*y)/12}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="cyl_inertia" params="m r h">
+    <inertial>
+      <mass value="${m}"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="${m*(3*r*r+h*h)/12}" ixy="0" ixz="0"
+               iyy="${m*(3*r*r+h*h)/12}" iyz="0"
+               izz="${m*r*r/2}"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- Fixed box-shaped component on the chassis (visual + light inertia) -->
+  <xacro:macro name="deck_box" params="name parent x y z sx sy sz mat mass:=0.02 collide:=false">
+    <link name="${name}">
+      <visual><geometry><box size="${sx} ${sy} ${sz}"/></geometry><material name="${mat}"/></visual>
+      <xacro:if value="${collide}">
+        <collision><geometry><box size="${sx} ${sy} ${sz}"/></geometry></collision>
+      </xacro:if>
+      <xacro:box_inertia m="${mass}" x="${sx}" y="${sy}" z="${sz}"/>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent}"/><child link="${name}"/>
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- 5 V pump (small cylinder body + motor can) -->
+  <xacro:macro name="pump" params="name parent x y z">
+    <link name="${name}">
+      <visual><geometry><cylinder radius="0.014" length="0.035"/></geometry><material name="pcb_dark"/></visual>
+      <xacro:cyl_inertia m="0.03" r="0.014" h="0.035"/>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent}"/><child link="${name}"/>
+      <origin xyz="${x} ${y} ${z}" rpy="0 ${PI/2} 0"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- TT geared motor + 65 mm wheel -->
+  <xacro:macro name="wheel" params="prefix x y">
+    <link name="${prefix}_motor">
+      <visual><geometry><box size="0.070 0.022 0.019"/></geometry><material name="yellow"/></visual>
+      <xacro:box_inertia m="0.03" x="0.070" y="0.022" z="0.019"/>
+    </link>
+    <joint name="${prefix}_motor_joint" type="fixed">
+      <parent link="base_link"/><child link="${prefix}_motor"/>
+      <origin xyz="${x*0.75} ${y*0.62} ${wheel_radius - base_z}" rpy="0 0 0"/>
+    </joint>
+
+    <link name="${prefix}_wheel">
+      <visual><geometry><cylinder radius="${wheel_radius}" length="${wheel_width}"/></geometry><material name="black"/></visual>
+      <collision><geometry><cylinder radius="${wheel_radius}" length="${wheel_width}"/></geometry></collision>
+      <xacro:cyl_inertia m="${wheel_mass}" r="${wheel_radius}" h="${wheel_width}"/>
+    </link>
+    <joint name="${prefix}_wheel_joint" type="continuous">
+      <parent link="base_link"/><child link="${prefix}_wheel"/>
+      <origin xyz="${x} ${y} ${wheel_radius - base_z}" rpy="${-PI/2} 0 0"/>
+      <axis xyz="0 0 1"/>
+      <dynamics damping="0.01" friction="0.01"/>
+    </joint>
+
+    <!-- Skid steer: high longitudinal grip, lower lateral grip so the rover can pivot -->
+    <gazebo reference="${prefix}_wheel">
+      <mu1>1.0</mu1><mu2>0.4</mu2>
+      <kp>1e6</kp><kd>100</kd>
+      <fdir1>0 0 1</fdir1>
+    </gazebo>
+  </xacro:macro>
+
+  <!-- ===================== Chassis ===================== -->
   <link name="base_footprint"/>
 
   <joint name="base_joint" type="fixed">
-    <parent link="base_footprint"/>
-    <child link="base_link"/>
-    <origin xyz="0 0 0.10" rpy="0 0 0"/>
+    <parent link="base_footprint"/><child link="base_link"/>
+    <origin xyz="0 0 ${base_z}" rpy="0 0 0"/>
   </joint>
 
-  <!-- Main Chassis -->
+  <!-- Lower deck (wheels, motors, L298N) -->
   <link name="base_link">
+    <visual><geometry><box size="${lower_l} ${lower_w} ${deck_t}"/></geometry><material name="wood"/></visual>
+    <collision><geometry><box size="${lower_l} ${lower_w} ${deck_t}"/></geometry></collision>
+    <xacro:box_inertia m="0.35" x="${lower_l}" y="${lower_w}" z="${deck_t}"/>
+  </link>
+
+  <!-- Upper deck (tanks, filter, electronics, arm) -->
+  <link name="upper_deck">
+    <visual><geometry><box size="${upper_l} ${upper_w} ${deck_t}"/></geometry><material name="wood"/></visual>
+    <collision><geometry><box size="${upper_l} ${upper_w} ${deck_t}"/></geometry></collision>
+    <xacro:box_inertia m="0.40" x="${upper_l}" y="${upper_w}" z="${deck_t}"/>
+  </link>
+  <joint name="upper_deck_joint" type="fixed">
+    <parent link="base_link"/><child link="upper_deck"/>
+    <origin xyz="0 0 ${upper_z}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Standoffs -->
+  <xacro:macro name="standoff" params="n x y">
+    <link name="standoff_${n}">
+      <visual><geometry><cylinder radius="0.004" length="${deck_gap}"/></geometry><material name="metal"/></visual>
+      <xacro:cyl_inertia m="0.005" r="0.004" h="${deck_gap}"/>
+    </link>
+    <joint name="standoff_${n}_joint" type="fixed">
+      <parent link="base_link"/><child link="standoff_${n}"/>
+      <origin xyz="${x} ${y} ${deck_gap/2}" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+  <xacro:standoff n="1" x="${ lower_l/2-0.015}" y="${ lower_w/2-0.015}"/>
+  <xacro:standoff n="2" x="${ lower_l/2-0.015}" y="${-lower_w/2+0.015}"/>
+  <xacro:standoff n="3" x="${-lower_l/2+0.015}" y="${ lower_w/2-0.015}"/>
+  <xacro:standoff n="4" x="${-lower_l/2+0.015}" y="${-lower_w/2+0.015}"/>
+
+  <!-- ===================== Drive train (4WD) ===================== -->
+  <xacro:wheel prefix="front_left"  x="${ wheel_base/2}" y="${ wheel_track/2}"/>
+  <xacro:wheel prefix="front_right" x="${ wheel_base/2}" y="${-wheel_track/2}"/>
+  <xacro:wheel prefix="rear_left"   x="${-wheel_base/2}" y="${ wheel_track/2}"/>
+  <xacro:wheel prefix="rear_right"  x="${-wheel_base/2}" y="${-wheel_track/2}"/>
+
+  <!-- L298N dual H-bridge on the lower deck -->
+  <xacro:deck_box name="l298n_driver" parent="base_link" x="0.0" y="0.0" z="${deck_t/2 + 0.014}"
+                  sx="0.043" sy="0.043" sz="0.027" mat="pcb_red" mass="0.03"/>
+
+  <!-- ===================== Treatment train (upper deck) ===================== -->
+  <!-- Stage 1: raw water tank (rear-left) -->
+  <xacro:deck_box name="stage1_raw_tank" parent="upper_deck"
+                  x="-0.115" y="0.055" z="${deck_t/2 + tank_size/2}"
+                  sx="${tank_size}" sy="${tank_size}" sz="${tank_size}"
+                  mat="raw_water" mass="${water_mass}" collide="true"/>
+
+  <!-- Stage 2: gravity-fed filtration column (centre, tall) -->
+  <link name="stage2_filter_column">
+    <visual><geometry><cylinder radius="0.025" length="0.16"/></geometry><material name="filter"/></visual>
+    <collision><geometry><cylinder radius="0.025" length="0.16"/></geometry></collision>
+    <xacro:cyl_inertia m="0.25" r="0.025" h="0.16"/>
+  </link>
+  <joint name="stage2_filter_column_joint" type="fixed">
+    <parent link="upper_deck"/><child link="stage2_filter_column"/>
+    <origin xyz="-0.01 0.075 ${deck_t/2 + 0.08}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Stage 3: disinfection & clean tank (front-left) -->
+  <xacro:deck_box name="stage3_clean_tank" parent="upper_deck"
+                  x="0.095" y="0.055" z="${deck_t/2 + tank_size/2}"
+                  sx="${tank_size}" sy="${tank_size}" sz="${tank_size}"
+                  mat="clean_water" mass="${water_mass}" collide="true"/>
+
+  <!-- Pumps -->
+  <xacro:pump name="alum_dosing_pump"     parent="stage1_raw_tank"   x="0.0"  y="0.0"  z="${tank_size/2 + 0.016}"/>
+  <xacro:pump name="chlorine_dosing_pump" parent="stage3_clean_tank" x="0.0"  y="0.0"  z="${tank_size/2 + 0.016}"/>
+  <xacro:pump name="delivery_pump"        parent="upper_deck"        x="0.135" y="-0.060" z="${deck_t/2 + 0.016}"/>
+  <xacro:pump name="intake_pump"          parent="base_link"         x="${-lower_l/2 - 0.45}" y="0.10" z="-0.025"/>
+
+  <!-- Coarse mesh pre-filter on the intake line -->
+  <link name="coarse_prefilter">
+    <visual><geometry><cylinder radius="0.010" length="0.030"/></geometry><material name="metal"/></visual>
+    <xacro:cyl_inertia m="0.01" r="0.010" h="0.030"/>
+  </link>
+  <joint name="coarse_prefilter_joint" type="fixed">
+    <parent link="upper_deck"/><child link="coarse_prefilter"/>
+    <origin xyz="-0.17 0.10 ${deck_t/2 + 0.012}" rpy="${PI/2} 0 0"/>
+  </joint>
+
+  <!-- Flexible intake hose (~45 cm) trailing from the rear; the intake pump is at its tip -->
+  <link name="intake_hose">
     <visual>
-      <geometry><box size="0.65 0.40 0.02"/></geometry>
-      <material name="wood"><color rgba="0.82 0.62 0.42 1"/></material>
+      <origin xyz="0 0 0" rpy="0 ${PI/2} 0"/>
+      <geometry><cylinder radius="0.005" length="0.45"/></geometry>
+      <material name="hose"/>
     </visual>
-    <collision>
-      <geometry><box size="0.65 0.40 0.02"/></geometry>
-    </collision>
+    <xacro:cyl_inertia m="0.02" r="0.005" h="0.45"/>
+  </link>
+  <joint name="intake_hose_joint" type="fixed">
+    <parent link="base_link"/><child link="intake_hose"/>
+    <origin xyz="${-lower_l/2 - 0.225} 0.10 0.0" rpy="0 -0.08 0"/>
+  </joint>
+
+  <!-- ===================== Electronics / power ===================== -->
+  <xacro:deck_box name="power_bank" parent="upper_deck" x="-0.085" y="-0.060" z="${deck_t/2 + 0.0125}"
+                  sx="0.14" sy="0.068" sz="0.025" mat="pcb_dark" mass="0.22"/>
+  <xacro:deck_box name="esp32" parent="upper_deck" x="0.025" y="-0.045" z="${deck_t/2 + 0.006}"
+                  sx="0.052" sy="0.028" sz="0.012" mat="pcb_dark" mass="0.01"/>
+  <xacro:deck_box name="relay_module" parent="upper_deck" x="0.065" y="-0.090" z="${deck_t/2 + 0.009}"
+                  sx="0.075" sy="0.055" sz="0.018" mat="pcb_blue" mass="0.05"/>
+
+  <!-- ===================== Stage 4: servo-driven delivery arm ===================== -->
+  <link name="arm_mount">
+    <visual><geometry><box size="0.025 0.025 0.050"/></geometry><material name="wood"/></visual>
+    <xacro:box_inertia m="0.02" x="0.025" y="0.025" z="0.050"/>
+  </link>
+  <joint name="arm_mount_joint" type="fixed">
+    <parent link="upper_deck"/><child link="arm_mount"/>
+    <origin xyz="0.155 -0.095 ${deck_t/2 + 0.025}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- SG90 body -->
+  <link name="sg90_servo">
+    <visual><geometry><box size="0.023 0.012 0.022"/></geometry><material name="servo_blue"/></visual>
+    <xacro:box_inertia m="0.009" x="0.023" y="0.012" z="0.022"/>
+  </link>
+  <joint name="sg90_servo_joint" type="fixed">
+    <parent link="arm_mount"/><child link="sg90_servo"/>
+    <origin xyz="0 0 0.036" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Boom: rotates about Z. 0 rad = stowed along +X (over the front), PI/2 = deployed out to the right (-Y). -->
+  <link name="delivery_arm">
+    <visual>
+      <origin xyz="0.075 0 0.020" rpy="0 ${PI/2 - 0.26} 0"/>
+      <geometry><box size="0.012 0.012 0.155"/></geometry>
+      <material name="wood"/>
+    </visual>
     <inertial>
-      <mass value="5.0"/>
-      <origin xyz="0 0 0"/>
-      <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.2" iyz="0" izz="0.2"/>
+      <mass value="0.02"/>
+      <origin xyz="0.075 0 0.020"/>
+      <inertia ixx="0.000005" ixy="0" ixz="0" iyy="0.00004" iyz="0" izz="0.00004"/>
     </inertial>
   </link>
-
-  <!-- Tanks & Deck Components -->
-  <link name="raw_tank">
-    <visual><geometry><box size="0.18 0.18 0.15"/></geometry><material name="trans_blue"><color rgba="0.1 0.5 0.9 0.6"/></material></visual>
-  </link>
-  <joint name="raw_tank_joint" type="fixed"><parent link="base_link"/><child link="raw_tank"/><origin xyz="-0.18 0.09 0.085" rpy="0 0 0"/></joint>
-
-  <link name="clean_tank">
-    <visual><geometry><box size="0.18 0.18 0.15"/></geometry><material name="trans_clean"><color rgba="0.2 0.8 1.0 0.6"/></material></visual>
-  </link>
-  <joint name="clean_tank_joint" type="fixed"><parent link="base_link"/><child link="clean_tank"/><origin xyz="0.18 0.09 0.085" rpy="0 0 0"/></joint>
-
-  <!-- Front Frictionless Caster -->
-  <link name="front_caster">
-    <visual><geometry><sphere radius="0.05"/></geometry><material name="black"><color rgba="0.1 0.1 0.1 1"/></material></visual>
-    <collision><geometry><sphere radius="0.05"/></geometry></collision>
-    <inertial><mass value="0.1"/><origin xyz="0 0 0"/><inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/></inertial>
-  </link>
-  <joint name="front_caster_joint" type="fixed">
-    <parent link="base_link"/><child link="front_caster"/><origin xyz="0.22 0 -0.05" rpy="0 0 0"/>
+  <joint name="arm_servo_joint" type="revolute">
+    <parent link="sg90_servo"/><child link="delivery_arm"/>
+    <origin xyz="0 0 0.012" rpy="0 0 0"/>
+    <axis xyz="0 0 -1"/>
+    <limit lower="0.0" upper="${PI/2}" effort="0.18" velocity="5.2"/>  <!-- SG90: 1.8 kg.cm, 0.1 s/60deg -->
+    <dynamics damping="0.002" friction="0.0"/>
   </joint>
 
-  <!-- Rear Drive Left Wheel -->
-  <link name="rear_left_wheel">
-    <visual><geometry><cylinder radius="0.10" length="0.06"/></geometry><material name="black"><color rgba="0.05 0.05 0.05 1"/></material></visual>
-    <collision><geometry><cylinder radius="0.10" length="0.06"/></geometry></collision>
-    <inertial><mass value="0.5"/><origin xyz="0 0 0"/><inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.002"/></inertial>
+  <link name="delivery_nozzle">
+    <visual>
+      <origin xyz="0 0 -0.012" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.007" length="0.024"/></geometry>
+      <material name="nozzle"/>
+    </visual>
+    <xacro:cyl_inertia m="0.004" r="0.007" h="0.024"/>
   </link>
-  <joint name="rear_left_wheel_joint" type="continuous">
-    <parent link="base_link"/><child link="rear_left_wheel"/><origin xyz="-0.15 0.22 0" rpy="-1.5708 0 0"/><axis xyz="0 0 1"/>
+  <joint name="delivery_nozzle_joint" type="fixed">
+    <parent link="delivery_arm"/><child link="delivery_nozzle"/>
+    <origin xyz="0.150 0 0.040" rpy="0 0 0"/>
   </joint>
 
-  <!-- Rear Drive Right Wheel -->
-  <link name="rear_right_wheel">
-    <visual><geometry><cylinder radius="0.10" length="0.06"/></geometry><material name="black"><color rgba="0.05 0.05 0.05 1"/></material></visual>
-    <collision><geometry><cylinder radius="0.10" length="0.06"/></geometry></collision>
-    <inertial><mass value="0.5"/><origin xyz="0 0 0"/><inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.002"/></inertial>
-  </link>
-  <joint name="rear_right_wheel_joint" type="continuous">
-    <parent link="base_link"/><child link="rear_right_wheel"/><origin xyz="-0.15 -0.22 0" rpy="-1.5708 0 0"/><axis xyz="0 0 1"/>
-  </joint>
-
-  <!-- Friction Settings -->
-  <gazebo reference="front_caster"><mu1>0.001</mu1><mu2>0.001</mu2></gazebo>
-  <gazebo reference="rear_left_wheel"><mu1>1.0</mu1><mu2>1.0</mu2></gazebo>
-  <gazebo reference="rear_right_wheel"><mu1>1.0</mu1><mu2>1.0</mu2></gazebo>
-
-  <!-- Standard Built-In DiffDrive Plugin for Gazebo Jazzy / Harmonic -->
+  <!-- ===================== Gazebo systems ===================== -->
   <gazebo>
+    <!-- Skid-steer drive: both wheels on each side are driven together, like the L298N channels A/B -->
     <plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive">
+      <left_joint>front_left_wheel_joint</left_joint>
       <left_joint>rear_left_wheel_joint</left_joint>
+      <right_joint>front_right_wheel_joint</right_joint>
       <right_joint>rear_right_wheel_joint</right_joint>
-      <wheel_separation>0.44</wheel_separation>
-      <wheel_radius>0.10</wheel_radius>
-      <max_linear_acceleration>5.0</max_linear_acceleration>
-      <max_angular_acceleration>10.0</max_angular_acceleration>
+      <wheel_separation>${wheel_track}</wheel_separation>
+      <wheel_radius>${wheel_radius}</wheel_radius>
+      <!-- TT motor ~200 rpm under load -> ~0.68 m/s top speed with 65 mm wheels -->
+      <max_linear_velocity>0.6</max_linear_velocity>
+      <min_linear_velocity>-0.6</min_linear_velocity>
+      <max_angular_velocity>3.0</max_angular_velocity>
+      <min_angular_velocity>-3.0</min_angular_velocity>
+      <max_linear_acceleration>1.5</max_linear_acceleration>
+      <min_linear_acceleration>-1.5</min_linear_acceleration>
+      <max_angular_acceleration>6.0</max_angular_acceleration>
+      <min_angular_acceleration>-6.0</min_angular_acceleration>
       <odom_publish_frequency>50</odom_publish_frequency>
       <topic>cmd_vel</topic>
       <odom_topic>odom</odom_topic>
       <tf_topic>tf</tf_topic>
       <frame_id>odom</frame_id>
       <child_frame_id>base_footprint</child_frame_id>
+    </plugin>
+
+    <!-- Ground-truth pose (used by mission_navigator_gt because skid-steer wheel odom drifts) -->
+    <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
+      <odom_frame>odom_gt</odom_frame>
+      <robot_base_frame>base_footprint</robot_base_frame>
+      <odom_topic>ground_truth/odom</odom_topic>
+      <tf_topic>ground_truth/tf</tf_topic>
+      <odom_publish_frequency>50</odom_publish_frequency>
+      <dimensions>3</dimensions>
+    </plugin>
+
+    <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
+      <topic>joint_states</topic>
+    </plugin>
+
+    <!-- SG90 servo: position controlled, angle in radians -->
+    <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
+      <joint_name>arm_servo_joint</joint_name>
+      <topic>arm_servo/cmd_pos</topic>
+      <p_gain>2.0</p_gain>
+      <i_gain>0.05</i_gain>
+      <d_gain>0.05</d_gain>
+      <cmd_max>0.18</cmd_max>
+      <cmd_min>-0.18</cmd_min>
+      <initial_position>0.0</initial_position>
     </plugin>
   </gazebo>
 

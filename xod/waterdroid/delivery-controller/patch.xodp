@@ -1,0 +1,157 @@
+{
+  "description": "Issue #8 delivery pump (Stage 3 -> homestead container). REQ starts an ML delivery that only pumps while HOME (arrived at homestead) AND ARM (arm deployed, from servo-arm DEP) are true; stops at the volume, when the arm moves away or Stage 3 (S3 %) is nearly empty. ST: 0 idle 1 waiting for arm 2 pumping 3 done 4 aborted.",
+  "nodes": [
+    {
+      "id": "in00",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "label": "REQ",
+      "boundLiterals": {
+        "__out__": "Never"
+      }
+    },
+    {
+      "id": "in01",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 102,
+        "y": 0
+      },
+      "label": "ML",
+      "boundLiterals": {
+        "__out__": "300"
+      }
+    },
+    {
+      "id": "in02",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 204,
+        "y": 0
+      },
+      "label": "ABRT",
+      "boundLiterals": {
+        "__out__": "Never"
+      }
+    },
+    {
+      "id": "in03",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 306,
+        "y": 0
+      },
+      "label": "HOME",
+      "boundLiterals": {
+        "__out__": "False"
+      }
+    },
+    {
+      "id": "in04",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 408,
+        "y": 0
+      },
+      "label": "ARM",
+      "boundLiterals": {
+        "__out__": "False"
+      }
+    },
+    {
+      "id": "in05",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 510,
+        "y": 0
+      },
+      "label": "S3",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in06",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 612,
+        "y": 0
+      },
+      "label": "FLOW",
+      "boundLiterals": {
+        "__out__": "25"
+      },
+      "description": "pump mL/s (calibrate)"
+    },
+    {
+      "id": "in07",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 714,
+        "y": 0
+      },
+      "label": "RON",
+      "boundLiterals": {
+        "__out__": "False"
+      },
+      "description": "relay CH4 actually ON"
+    },
+    {
+      "id": "impl",
+      "type": "xod/patch-nodes/not-implemented-in-xod",
+      "position": {
+        "x": 0,
+        "y": 153
+      }
+    },
+    {
+      "id": "out00",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 0,
+        "y": 306
+      },
+      "label": "WANT"
+    },
+    {
+      "id": "out01",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 102,
+        "y": 306
+      },
+      "label": "ST"
+    },
+    {
+      "id": "out02",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 204,
+        "y": 306
+      },
+      "label": "DLV",
+      "description": "mL this delivery"
+    },
+    {
+      "id": "out03",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 306,
+        "y": 306
+      },
+      "label": "TOT"
+    },
+    {
+      "id": "out04",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 408,
+        "y": 306
+      },
+      "label": "DONE"
+    }
+  ]
+}

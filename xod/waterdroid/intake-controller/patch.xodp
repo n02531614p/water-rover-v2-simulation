@@ -1,0 +1,141 @@
+{
+  "description": "Issue #1 intake pump: timed fill of Stage 1 with motor-burnout cutoff (MAXR s) and dry-run protection (relay ON but LVL not rising). WANT goes to relay-sequencer REQ1; feed the real relay state back into RON. ST: 0 idle 1 pumping 2 full 3 blocked 4 DRY_RUN 5 TIMEOUT.",
+  "nodes": [
+    {
+      "id": "in00",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "label": "STRT",
+      "boundLiterals": {
+        "__out__": "Never"
+      },
+      "description": "Manual Water Intake / mission start"
+    },
+    {
+      "id": "in01",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 102,
+        "y": 0
+      },
+      "label": "STOP",
+      "boundLiterals": {
+        "__out__": "Never"
+      }
+    },
+    {
+      "id": "in02",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 204,
+        "y": 0
+      },
+      "label": "RST",
+      "boundLiterals": {
+        "__out__": "Never"
+      },
+      "description": "clear a DRY_RUN / TIMEOUT fault"
+    },
+    {
+      "id": "in03",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 306,
+        "y": 0
+      },
+      "label": "LVL",
+      "boundLiterals": {
+        "__out__": "0"
+      },
+      "description": "Stage 1 level 0-100 %"
+    },
+    {
+      "id": "in04",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 408,
+        "y": 0
+      },
+      "label": "BLK",
+      "boundLiterals": {
+        "__out__": "False"
+      },
+      "description": "block: column overflow / e-stop"
+    },
+    {
+      "id": "in05",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 510,
+        "y": 0
+      },
+      "label": "RON",
+      "boundLiterals": {
+        "__out__": "False"
+      },
+      "description": "relay CH1 actually ON"
+    },
+    {
+      "id": "in06",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 612,
+        "y": 0
+      },
+      "label": "MAXR",
+      "boundLiterals": {
+        "__out__": "90"
+      },
+      "description": "max run seconds"
+    },
+    {
+      "id": "impl",
+      "type": "xod/patch-nodes/not-implemented-in-xod",
+      "position": {
+        "x": 0,
+        "y": 153
+      }
+    },
+    {
+      "id": "out00",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 0,
+        "y": 306
+      },
+      "label": "WANT"
+    },
+    {
+      "id": "out01",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 102,
+        "y": 306
+      },
+      "label": "ST"
+    },
+    {
+      "id": "out02",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 204,
+        "y": 306
+      },
+      "label": "RUN",
+      "description": "run time s"
+    },
+    {
+      "id": "out03",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 306,
+        "y": 306
+      },
+      "label": "FLT",
+      "description": "dry-run or timeout fault"
+    }
+  ]
+}

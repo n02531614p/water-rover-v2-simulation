@@ -1,0 +1,371 @@
+{
+  "description": "Issue #11 central state machine: Navigating -> Pumping -> Dosing -> Delivering. Arrival pulses come from navigation (Issue #7), the ROS 2 sim or dashboard buttons. Outputs one-shot pulses that drive the subsystem nodes, and DRV=false inhibits the motors while pumps run. SID matches the Node-RED serial bridge: 0 IDLE 1 NAV_RIVER 2 INTAKE_DOSE 3 NAV_HOMESTEAD 4 DELIVER_WATER 5 EMERGENCY_STOP. ST = detailed state 0-10 (STATE_IDLE ... STATE_EMERGENCY_STOP).",
+  "nodes": [
+    {
+      "id": "in00",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "label": "STRT",
+      "boundLiterals": {
+        "__out__": "Never"
+      }
+    },
+    {
+      "id": "in01",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 102,
+        "y": 0
+      },
+      "label": "PAUS",
+      "boundLiterals": {
+        "__out__": "Never"
+      }
+    },
+    {
+      "id": "in02",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 204,
+        "y": 0
+      },
+      "label": "RSUM",
+      "boundLiterals": {
+        "__out__": "Never"
+      }
+    },
+    {
+      "id": "in03",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 306,
+        "y": 0
+      },
+      "label": "ABRT",
+      "boundLiterals": {
+        "__out__": "Never"
+      }
+    },
+    {
+      "id": "in04",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 408,
+        "y": 0
+      },
+      "label": "ESTP",
+      "boundLiterals": {
+        "__out__": "False"
+      }
+    },
+    {
+      "id": "in05",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 510,
+        "y": 0
+      },
+      "label": "ARIV",
+      "boundLiterals": {
+        "__out__": "Never"
+      },
+      "description": "arrived at river"
+    },
+    {
+      "id": "in06",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 612,
+        "y": 0
+      },
+      "label": "AHOM",
+      "boundLiterals": {
+        "__out__": "Never"
+      },
+      "description": "arrived at homestead"
+    },
+    {
+      "id": "in07",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 714,
+        "y": 0
+      },
+      "label": "ADEP",
+      "boundLiterals": {
+        "__out__": "Never"
+      },
+      "description": "arrived at depot"
+    },
+    {
+      "id": "in08",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 816,
+        "y": 0
+      },
+      "label": "INB",
+      "boundLiterals": {
+        "__out__": "False"
+      },
+      "description": "intake busy"
+    },
+    {
+      "id": "in09",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 918,
+        "y": 0
+      },
+      "label": "ALB",
+      "boundLiterals": {
+        "__out__": "False"
+      },
+      "description": "alum busy"
+    },
+    {
+      "id": "in10",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 1020,
+        "y": 0
+      },
+      "label": "CLB",
+      "boundLiterals": {
+        "__out__": "False"
+      },
+      "description": "chlorine busy"
+    },
+    {
+      "id": "in11",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 1122,
+        "y": 0
+      },
+      "label": "S1",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in12",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 1224,
+        "y": 0
+      },
+      "label": "S2",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in13",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 1326,
+        "y": 0
+      },
+      "label": "DEP",
+      "boundLiterals": {
+        "__out__": "False"
+      },
+      "description": "arm deployed"
+    },
+    {
+      "id": "in14",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 1428,
+        "y": 0
+      },
+      "label": "STW",
+      "boundLiterals": {
+        "__out__": "True"
+      },
+      "description": "arm stowed"
+    },
+    {
+      "id": "in15",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 1530,
+        "y": 0
+      },
+      "label": "DLB",
+      "boundLiterals": {
+        "__out__": "False"
+      },
+      "description": "delivery busy"
+    },
+    {
+      "id": "in16",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 1632,
+        "y": 0
+      },
+      "label": "CML",
+      "boundLiterals": {
+        "__out__": "0"
+      },
+      "description": "Stage 3 mL"
+    },
+    {
+      "id": "in17",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 1734,
+        "y": 0
+      },
+      "label": "HOMS",
+      "boundLiterals": {
+        "__out__": "3"
+      },
+      "description": "homesteads per trip"
+    },
+    {
+      "id": "in18",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 1836,
+        "y": 0
+      },
+      "label": "CNT",
+      "boundLiterals": {
+        "__out__": "1800"
+      },
+      "description": "chlorine contact s"
+    },
+    {
+      "id": "impl",
+      "type": "xod/patch-nodes/not-implemented-in-xod",
+      "position": {
+        "x": 0,
+        "y": 153
+      }
+    },
+    {
+      "id": "out00",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 0,
+        "y": 306
+      },
+      "label": "ST"
+    },
+    {
+      "id": "out01",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 102,
+        "y": 306
+      },
+      "label": "SID"
+    },
+    {
+      "id": "out02",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 204,
+        "y": 306
+      },
+      "label": "DRV",
+      "description": "motors allowed"
+    },
+    {
+      "id": "out03",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 306,
+        "y": 306
+      },
+      "label": "INTK"
+    },
+    {
+      "id": "out04",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 408,
+        "y": 306
+      },
+      "label": "ALUM"
+    },
+    {
+      "id": "out05",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 510,
+        "y": 306
+      },
+      "label": "ALML"
+    },
+    {
+      "id": "out06",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 612,
+        "y": 306
+      },
+      "label": "CHLR"
+    },
+    {
+      "id": "out07",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 714,
+        "y": 306
+      },
+      "label": "CLML"
+    },
+    {
+      "id": "out08",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 816,
+        "y": 306
+      },
+      "label": "EXT"
+    },
+    {
+      "id": "out09",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 918,
+        "y": 306
+      },
+      "label": "RET"
+    },
+    {
+      "id": "out10",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 1020,
+        "y": 306
+      },
+      "label": "DLV"
+    },
+    {
+      "id": "out11",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 1122,
+        "y": 306
+      },
+      "label": "DLML"
+    },
+    {
+      "id": "out12",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 1224,
+        "y": 306
+      },
+      "label": "STOP"
+    }
+  ]
+}

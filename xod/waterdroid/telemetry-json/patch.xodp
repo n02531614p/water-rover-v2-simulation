@@ -1,0 +1,175 @@
+{
+  "description": "Issue #12 formats the rover telemetry into one JSON frame (same keys as the ESP32 sketch publishes on rover/telemetry). Send OUT over xod-dev/esp32 MQTT/HTTP or a serial line to Node-RED on every UPD.",
+  "nodes": [
+    {
+      "id": "in00",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "label": "UPD",
+      "boundLiterals": {
+        "__out__": "Continuously"
+      }
+    },
+    {
+      "id": "in01",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 102,
+        "y": 0
+      },
+      "label": "SID",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in02",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 204,
+        "y": 0
+      },
+      "label": "BATT",
+      "boundLiterals": {
+        "__out__": "5"
+      }
+    },
+    {
+      "id": "in03",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 306,
+        "y": 0
+      },
+      "label": "S1",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in04",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 408,
+        "y": 0
+      },
+      "label": "S2",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in05",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 510,
+        "y": 0
+      },
+      "label": "S3",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in06",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 612,
+        "y": 0
+      },
+      "label": "ARM",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in07",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 714,
+        "y": 0
+      },
+      "label": "ALUM",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in08",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 816,
+        "y": 0
+      },
+      "label": "CHLR",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in09",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 918,
+        "y": 0
+      },
+      "label": "DLV",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in10",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 1020,
+        "y": 0
+      },
+      "label": "HLTH",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in11",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 1122,
+        "y": 0
+      },
+      "label": "ESTP",
+      "boundLiterals": {
+        "__out__": "False"
+      }
+    },
+    {
+      "id": "impl",
+      "type": "xod/patch-nodes/not-implemented-in-xod",
+      "position": {
+        "x": 0,
+        "y": 153
+      }
+    },
+    {
+      "id": "out00",
+      "type": "xod/patch-nodes/output-string",
+      "position": {
+        "x": 0,
+        "y": 306
+      },
+      "label": "OUT"
+    },
+    {
+      "id": "out01",
+      "type": "xod/patch-nodes/output-pulse",
+      "position": {
+        "x": 102,
+        "y": 306
+      },
+      "label": "SENT"
+    }
+  ]
+}

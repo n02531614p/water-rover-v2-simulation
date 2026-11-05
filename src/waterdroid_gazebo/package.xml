@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>waterdroid_gazebo</name>
+  <version>0.1.0</version>
+  <description>Gazebo (Harmonic) worlds for the Waterdroid water-delivery rover: v2_village (river intake + 3 homestead offload bays) and the 5-homestead community village.</description>
+  <maintainer email="student@nust.ac.zw">student</maintainer>
+  <license>Apache License 2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <exec_depend>ros_gz_sim</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

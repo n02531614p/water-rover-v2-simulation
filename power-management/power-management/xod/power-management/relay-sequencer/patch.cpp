@@ -22,7 +22,9 @@ struct PowerConfig {
   float    shedV           = 4.50f;  // below this: shed one load
   float    criticalV       = 4.20f;  // below this: emergency shutdown
   // Start order / importance: lowest rank starts first and is shed last.
-  // Default (CH1 intake pump, CH2 left motor, CH3 right motor, CH4 aux pump):
+  // Default (CH1 intake pump, CH2 alum dosing pump, CH3 chlorine pump, CH4 delivery pump):
+  // dosing pumps start first and are shed last so a dose is never cut short.
+  // (The 4 TT motors are NOT on relays - they run from the L298N, see docs/HARDWARE.md.)
   uint8_t  rank[PC_CHANNELS] = {2, 0, 1, 3};
 };
 

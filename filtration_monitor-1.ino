@@ -16,11 +16,12 @@ const uint16_t MQTT_PORT = 1883;
 const char* TOPIC_STATUS = "rover/filtration/status";
 const char* TOPIC_CMD    = "rover/filtration/cmd";   // pause | resume | auto
 
-// Pins (ADC1 only: 32-39)
+// Pins follow the single rover pin map: firmware/waterdroid_esp32/src/rover_pins.h
+// (ADC1 only: 32-39; GPIO32 is now the L298N ENB, so S3 moved to GPIO36/VP)
 const int PIN_S1 = 34;   // Stage 1 raw tank level sensor
 const int PIN_S2 = 35;   // Stage 2 filtration column level sensor
-const int PIN_S3 = 32;   // Stage 3 clean tank level sensor
-const int PIN_RELAY_INTAKE = 26;  // Relay CH1 -> intake pump
+const int PIN_S3 = 36;   // Stage 3 clean tank level sensor (VP)
+const int PIN_RELAY_INTAKE = 23;  // Relay CH1 -> intake pump
 const bool RELAY_ACTIVE_LOW = true;
 
 // Per-sensor calibration (raw ADC 0-4095): dry = empty, wet = full. CALIBRATE THESE.

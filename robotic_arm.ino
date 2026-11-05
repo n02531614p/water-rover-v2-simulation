@@ -1,8 +1,17 @@
+// Stage 4 delivery arm (Issue #6) - bench test sketch.
+// Runs on the rover ESP32 (ESP32Servo library, GPIO13 per firmware/waterdroid_esp32/src/rover_pins.h)
+// or on an Arduino Uno for bench testing (Servo library, pin 9).
+// The integrated rover firmware uses the same logic in src/motion_cores.h (ServoArm).
+#if defined(ESP32)
+#include <ESP32Servo.h>
+const int SERVO_PIN = 13;   // GPIO9 is the SPI-flash line on ESP32 - never use it
+#else
 #include <Servo.h>
+const int SERVO_PIN = 9;
+#endif
 
 Servo armServo;
 
-const int SERVO_PIN = 9;
 const int STOW_ANGLE = 0;
 const int DEPLOY_ANGLE = 90;
 
@@ -14,9 +23,17 @@ const unsigned long MOVE_INTERVAL = 20;
 
 String inputCommand = "";
 
+void readSerialCommand();
+void moveServoSmoothly();
+
 void setup() {
   Serial.begin(9600);
+#if defined(ESP32)
+  armServo.setPeriodHertz(50);
+  armServo.attach(SERVO_PIN, 500, 2400);   // SG90 pulse range
+#else
   armServo.attach(SERVO_PIN);
+#endif
   armServo.write(STOW_ANGLE);
 
   Serial.println("Robotic Arm Controller Ready");

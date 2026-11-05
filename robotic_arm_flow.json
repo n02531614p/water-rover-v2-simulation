@@ -54,7 +54,8 @@
     "y": 200,
     "wires": [
       [
-        "serial_command"
+        "serial_command",
+        "arm_cmd_preview"
       ]
     ]
   },
@@ -81,7 +82,8 @@
     "y": 280,
     "wires": [
       [
-        "serial_command"
+        "serial_command",
+        "arm_cmd_preview"
       ]
     ]
   },
@@ -102,23 +104,27 @@
     "wires": [
       [
         "serial_command",
-        "angle_display"
+        "angle_display",
+        "arm_cmd_preview"
       ]
     ]
   },
   {
     "id": "serial_command",
-    "type": "debug",
+    "type": "mqtt out",
     "z": "arm_tab",
-    "name": "Arm Command Preview",
-    "active": true,
-    "tosidebar": true,
-    "console": false,
-    "tostatus": false,
-    "complete": "payload",
-    "targetType": "msg",
-    "x": 700,
-    "y": 240,
+    "name": "rover/arm/cmd",
+    "topic": "rover/arm/cmd",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "wd_broker",
+    "x": 640,
+    "y": 160,
     "wires": []
   },
   {
@@ -142,8 +148,8 @@
     "id": "arm_comment",
     "type": "comment",
     "z": "arm_tab",
-    "name": "Connect serial output after installing serial nodes",
-    "info": "Replace the debug output with a serial out node configured for the Arduino COM port.",
+    "name": "Commands go to the ESP32 over MQTT rover/arm/cmd (EXTEND | RETRACT | ANGLE:n)",
+    "info": "For a USB bench test with robotic_arm.ino instead, swap the mqtt out for a serial out (9600 baud).",
     "x": 460,
     "y": 340,
     "wires": []
@@ -167,5 +173,119 @@
     "order": 1,
     "disabled": false,
     "hidden": false
+  },
+  {
+    "id": "wd_broker",
+    "type": "mqtt-broker",
+    "name": "Rover broker",
+    "broker": "localhost",
+    "port": "1883",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": "",
+    "willMsg": {},
+    "userProps": "",
+    "sessionExpiry": ""
+  },
+  {
+    "id": "arm_cmd_preview",
+    "type": "debug",
+    "z": "arm_tab",
+    "name": "Arm Command Preview",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": true,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "payload",
+    "statusType": "auto",
+    "x": 650,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "id": "arm_status_in",
+    "type": "mqtt in",
+    "z": "arm_tab",
+    "name": "rover/arm/status",
+    "topic": "rover/arm/status",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 300,
+    "wires": [
+      [
+        "arm_status_angle"
+      ]
+    ]
+  },
+  {
+    "id": "arm_status_angle",
+    "type": "function",
+    "z": "arm_tab",
+    "name": "Live arm angle",
+    "func": "msg.payload = Number((msg.payload || {}).angle || 0);\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 400,
+    "y": 300,
+    "wires": [
+      [
+        "arm_angle_gauge"
+      ]
+    ]
+  },
+  {
+    "id": "arm_angle_gauge",
+    "type": "ui_gauge",
+    "z": "arm_tab",
+    "name": "Live arm angle",
+    "group": "arm_group",
+    "order": 5,
+    "width": 3,
+    "height": 3,
+    "gtype": "gage",
+    "title": "Live arm angle",
+    "label": "deg",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 90,
+    "colors": [
+      "#e6a23c",
+      "#3498db",
+      "#2ecc71"
+    ],
+    "seg1": "",
+    "seg2": "",
+    "diff": false,
+    "className": "",
+    "x": 640,
+    "y": 300,
+    "wires": []
   }
 ]
