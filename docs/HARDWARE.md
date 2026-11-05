@@ -10,12 +10,12 @@ uses the numbers on this page.
 |---|------|-------------------|-------|
 | 1 | ESP32 DevKit V1 (30-pin) | #11 "autonomous brain", #12 Wi-Fi | one board runs everything |
 | 1 | 10,000 mAh 5 V USB power bank (2 outputs preferred) | #10 | see power notes |
-| 2 | 2-channel 5 V relay boards (SRD-05VDC, active LOW, opto-isolated) | #10 | board A = CH1 intake + CH2 alum, board B = CH3 chlorine + CH4 delivery |
+| 2 | 2-channel 5 V relay boards (SRD-05VDC, active LOW, opto-isolated) | #10 | board A = CH1 intake + CH2 transfer, board B = CH3 chlorine + CH4 delivery |
 | 1 | L298N double H-bridge | #9 | left motor pair on A, right pair on B |
 | 4 | 5 V TT geared DC motors + 65 mm off-road wheels | #9 | skid steer, 2 motors in parallel per side |
 | 1 | 5 V submersible intake pump + coarse mesh pre-filter + 40–50 cm flexible hose | #1 | relay CH1 |
 | 1 | Stage 1 transparent raw water tank (max 400 mL) | #1, #3 | |
-| 1 | 5 V alum dosing pump (peristaltic) | #3 | relay CH2 |
+| 1 | 5 V transfer pump (was the alum pump): filtration column → delivery tank | #5 | relay CH2 |
 | 1 | Stage 2 clear gravity-fed filtration column | #5 | gravel / sand / charcoal |
 | 1 | Stage 3 transparent disinfection & clean tank (max 400 mL) | #3, #8 | |
 | 1 | 5 V chlorine dosing pump | #3 | relay CH3 |
@@ -29,7 +29,7 @@ uses the numbers on this page.
 * **Flow sensor instead of level sensors.** The one flow sensor sits on the intake hose between the pre-filter
   and Stage 1. The intake stops when it has counted the batch (380 mL minus any water still on board) and
   trips **DRY_RUN** if the pump runs 4 s without enough pulses. Stage 1 / column / Stage 3 volumes are then
-  *estimated* (`VolumeModel`): + intake, + alum, + chlorine, − delivered, with gravity filtration at a
+  *estimated* (`VolumeModel`): + intake, + chlorine, − delivered, with gravity filtration into the column at a
   calibrated mL/s. Set `USE_LEVEL_SENSORS 1` in the sketch if level sensors are added later (S2 on GPIO35,
   S3 on GPIO36; Stage 1 stays on the flow sensor).
 * **Fixed route instead of path finding.** The route is a fixed list of coordinates in
@@ -75,7 +75,7 @@ uses the numbers on this page.
 | 25 / 33 | L298N **IN3 / IN4** (right direction) | #9 |
 | 32 | L298N **ENB** (right PWM — remove ENB jumper) | #9 |
 | 23 | Relay board A **IN1** → intake pump (CH1) | #1 |
-| 19 | Relay board A **IN2** → alum dosing pump (CH2) | #3 |
+| 19 | Relay board A **IN2** → transfer pump, column → delivery tank (CH2) | #5 |
 | 18 | Relay board B **IN1** → chlorine dosing pump (CH3) | #3 |
 | 4 | Relay board B **IN2** → delivery pump (CH4) | #8 |
 | 13 | SG90 signal (orange) | #6 |
@@ -121,6 +121,9 @@ Full wiring diagrams: `docs/wiring/power.svg`, `drive.svg`, `relays.svg`, `senso
   from the 5 V rail, and VCC from the ESP32 3.3 V pin so the 3.3 V GPIOs can drive the opto-couplers. Both
   boards share 3V3 and GND from the ESP32; use the NO and COM screw terminals. The board is active-LOW: the firmware drives all four
   inputs HIGH before anything else at boot so no pump clicks on.
+* **Water path.** Intake pump → Stage 1 → gravity filter column → **transfer pump (CH2)** → Stage 3 delivery
+  tank (chlorine dosed here) → delivery pump → fixed nozzle. The transfer pump runs whenever ~20 mL has
+  collected in the column (estimated from the flow sensor and `FILTER_ML_PER_S`).
 * **Intake interlocks.** The intake pump only runs with the servo intake lowered, and the rover only drives with it
   raised (a lowered hose would drag).
 * **Drive and pumps never run together.** The mission state machine inhibits the motors while any pump relay
@@ -135,23 +138,22 @@ Full wiring diagrams: `docs/wiring/power.svg`, `drive.svg`, `relays.svg`, `senso
 | Flow sensor pulses per litre | `FLOW_PULSES_PER_L` | pump exactly 400 mL into a measuring jug, compare with `total_ml` on the dashboard, scale |
 | Filter column throughput | `FILTER_ML_PER_S` | time how long 500 mL takes to pass the column |
 | Route speed / pivot rate | `NAV_SPEED_MPS`, `NAV_TURN_DPS` | dashboard calibrate buttons (above) |
-| Dosing pump rate (mL/s) | `alum.rateMlPerS`, `chlorine.rateMlPerS` | run 60 s into a measuring cylinder |
+| Chlorine pump rate (mL/s) | `chlorine.rateMlPerS` | run 60 s into a measuring cylinder |
+| Transfer pump rate (mL/s) | `TRANSFER_ML_PER_S` | time how long it takes to move 200 mL |
 | Delivery pump flow (mL/s) | `delivery.flowMlPerS` | time filling a 500 mL jug |
 | 5 V rail reading | `VCAL` | multimeter reading ÷ sketch reading |
 | Servo end stops | `servo.attach(PIN_SERVO, 500, 2400)` | adjust if the SG90 buzzes at 0° or 90° |
 
 ## Treatment chemistry used for the dose numbers (Issue #3)
 
-One trip = a 380 mL batch (400 mL tanks), so each dose is about **1.1 mL alum** and **1.1 mL chlorine**:
-roughly one second of pump time each. The chlorine stock is diluted more than usual (1 : 50) so the dose is
+Alum is no longer used (Nov 2026): its pump now moves filtered water from the column into the delivery tank.
+One trip = a 380 mL batch (400 mL tanks), so the chlorine dose is about **1.1 mL**: roughly one second of pump time. The chlorine stock is diluted more than usual (1 : 50) so the dose is
 long enough for a 5 V pump to meter accurately.
 
 
 | Stock | Make it | Dose | Gives |
 |-------|---------|------|-------|
-| Alum 1 % | 10 g aluminium sulphate per litre of water | 3 mL per litre treated | ~30 mg/L (typical 10–50 mg/L for turbid river water) |
 | Chlorine 0.07 % | household bleach (3.5 %) diluted 1 : 50 (mix fresh every week) | 3 mL per litre treated | ~2 mg/L free chlorine |
 
 Allow ≥ 30 min chlorine contact time before delivery (the firmware default; the simulation shortens it to
-5 s). Jar-test the alum dose for your river water — turbidity changes it a lot. Never mix alum and bleach
-stocks; label both bottles.
+5 s). Label the bleach bottle clearly and keep it away from the water bottles.

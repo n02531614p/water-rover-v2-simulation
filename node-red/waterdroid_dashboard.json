@@ -137,7 +137,7 @@
   {
     "id": "wd_g_dose",
     "type": "ui_group",
-    "name": "Chemical dosing (#3)",
+    "name": "Transfer pump + chlorine (#5 #3)",
     "tab": "wd_t_water",
     "order": 3,
     "disp": true,
@@ -755,7 +755,7 @@
     "type": "function",
     "z": "wd_tab",
     "name": "Telemetry -> CSV line",
-    "func": "const t = msg.payload || {};\nconst cols = ['state','state_id','battery_v','s1','s2','s3','arm','alum_ml','chlorine_ml','delivered_ml','health','estop'];\nlet line = new Date().toISOString() + ',' + cols.map(c => t[c] !== undefined ? (typeof t[c] === 'object' ? JSON.stringify(t[c]).replace(/,/g,';') : t[c]) : '').join(',');\nif (!context.get('header')) { context.set('header', true); node.send({payload: 'time,' + cols.join(',')}); }\nmsg.payload = line;\nreturn msg;",
+    "func": "const t = msg.payload || {};\nconst cols = ['state','state_id','battery_v','s1','s2','s3','arm','transfer_ml','chlorine_ml','delivered_ml','health','estop'];\nlet line = new Date().toISOString() + ',' + cols.map(c => t[c] !== undefined ? (typeof t[c] === 'object' ? JSON.stringify(t[c]).replace(/,/g,';') : t[c]) : '').join(',');\nif (!context.get('header')) { context.set('header', true); node.send({payload: 'time,' + cols.join(',')}); }\nmsg.payload = line;\nreturn msg;",
     "outputs": 1,
     "timeout": 0,
     "noerr": 0,
@@ -1255,6 +1255,138 @@
     ]
   },
   {
+    "id": "wd_tr_out",
+    "type": "mqtt out",
+    "z": "wd_tab",
+    "name": "rover/transfer/cmd",
+    "topic": "rover/transfer/cmd",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "wd_broker",
+    "x": 850,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "wd_btn_tr_run",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Run transfer pump",
+    "group": "wd_g_dose",
+    "order": 1,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Run transfer pump",
+    "tooltip": "",
+    "color": "#ffffff",
+    "bgcolor": "#2980b9",
+    "className": "",
+    "icon": "",
+    "payload": "run",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 120,
+    "wires": [
+      [
+        "wd_tr_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_btn_tr_stop",
+    "type": "ui_button",
+    "z": "wd_tab",
+    "name": "Stop transfer",
+    "group": "wd_g_dose",
+    "order": 2,
+    "width": 3,
+    "height": 1,
+    "passthru": false,
+    "label": "Stop transfer",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "",
+    "payload": "stop",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 160,
+    "wires": [
+      [
+        "wd_tr_out"
+      ]
+    ]
+  },
+  {
+    "id": "wd_tr_in",
+    "type": "mqtt in",
+    "z": "wd_tab",
+    "name": "rover/transfer/status",
+    "topic": "rover/transfer/status",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "wd_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 200,
+    "wires": [
+      [
+        "wd_tr_fmt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_tr_fmt",
+    "type": "function",
+    "z": "wd_tab",
+    "name": "Transfer status",
+    "func": "const s = msg.payload || {};\nreturn [{payload: `${s.pump ? 'PUMPING' : 'idle'} . column ${Number(s.column_ml||0).toFixed(0)} mL . moved ${Number(s.total_ml||0).toFixed(0)} mL total`}];",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 240,
+    "wires": [
+      [
+        "wd_tr_txt"
+      ]
+    ]
+  },
+  {
+    "id": "wd_tr_txt",
+    "type": "ui_text",
+    "z": "wd_tab",
+    "group": "wd_g_dose",
+    "order": 3,
+    "width": 6,
+    "height": 1,
+    "name": "Transfer (column -> delivery tank)",
+    "label": "Transfer (column -> delivery tank)",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "x": 620,
+    "y": 280,
+    "wires": []
+  },
+  {
     "id": "wd_dose_out",
     "type": "mqtt out",
     "z": "wd_tab",
@@ -1269,82 +1401,8 @@
     "expiry": "",
     "broker": "wd_broker",
     "x": 850,
-    "y": 80,
+    "y": 320,
     "wires": []
-  },
-  {
-    "id": "wd_num_alum",
-    "type": "ui_numeric",
-    "z": "wd_tab",
-    "name": "Alum mL",
-    "label": "Alum mL",
-    "tooltip": "",
-    "group": "wd_g_dose",
-    "order": 1,
-    "width": 3,
-    "height": 1,
-    "wrap": false,
-    "passthru": true,
-    "topic": "alum",
-    "topicType": "str",
-    "format": "{{value}}",
-    "min": 0,
-    "max": 4,
-    "step": 0.1,
-    "className": "",
-    "x": 160,
-    "y": 120,
-    "wires": [
-      [
-        "wd_dose_alum_fmt"
-      ]
-    ]
-  },
-  {
-    "id": "wd_dose_alum_fmt",
-    "type": "function",
-    "z": "wd_tab",
-    "name": "store alum mL",
-    "func": "flow.set('alum_ml', Number(msg.payload));\nreturn null;",
-    "outputs": 1,
-    "timeout": 0,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 390,
-    "y": 160,
-    "wires": [
-      []
-    ]
-  },
-  {
-    "id": "wd_btn_dose_alum",
-    "type": "ui_button",
-    "z": "wd_tab",
-    "name": "Dose alum",
-    "group": "wd_g_dose",
-    "order": 2,
-    "width": 3,
-    "height": 1,
-    "passthru": false,
-    "label": "Dose alum",
-    "tooltip": "",
-    "color": "#ffffff",
-    "bgcolor": "#8e44ad",
-    "className": "",
-    "icon": "",
-    "payload": "alum",
-    "payloadType": "str",
-    "topic": "",
-    "topicType": "str",
-    "x": 160,
-    "y": 200,
-    "wires": [
-      [
-        "wd_dose_build"
-      ]
-    ]
   },
   {
     "id": "wd_num_cl",
@@ -1354,7 +1412,7 @@
     "label": "Chlorine mL",
     "tooltip": "",
     "group": "wd_g_dose",
-    "order": 3,
+    "order": 4,
     "width": 3,
     "height": 1,
     "wrap": false,
@@ -1367,7 +1425,7 @@
     "step": 0.1,
     "className": "",
     "x": 160,
-    "y": 240,
+    "y": 360,
     "wires": [
       [
         "wd_dose_cl_fmt"
@@ -1387,7 +1445,7 @@
     "finalize": "",
     "libs": [],
     "x": 390,
-    "y": 280,
+    "y": 400,
     "wires": [
       []
     ]
@@ -1398,7 +1456,7 @@
     "z": "wd_tab",
     "name": "Dose chlorine",
     "group": "wd_g_dose",
-    "order": 4,
+    "order": 5,
     "width": 3,
     "height": 1,
     "passthru": false,
@@ -1413,7 +1471,7 @@
     "topic": "",
     "topicType": "str",
     "x": 160,
-    "y": 320,
+    "y": 440,
     "wires": [
       [
         "wd_dose_build"
@@ -1425,7 +1483,7 @@
     "type": "function",
     "z": "wd_tab",
     "name": "Build dose command",
-    "func": "const pump = msg.payload;\nconst ml = pump === 'alum' ? (flow.get('alum_ml') ?? 1.1) : (flow.get('chlorine_ml') ?? 1.1);\nmsg.payload = JSON.stringify({pump: pump, ml: ml});\nreturn msg;",
+    "func": "msg.payload = JSON.stringify({pump: 'chlorine', ml: flow.get('chlorine_ml') ?? 1.1});\nreturn msg;",
     "outputs": 1,
     "timeout": 0,
     "noerr": 0,
@@ -1433,7 +1491,7 @@
     "finalize": "",
     "libs": [],
     "x": 390,
-    "y": 360,
+    "y": 480,
     "wires": [
       [
         "wd_dose_out"
@@ -1446,7 +1504,7 @@
     "z": "wd_tab",
     "name": "Stop dosing",
     "group": "wd_g_dose",
-    "order": 5,
+    "order": 6,
     "width": 6,
     "height": 1,
     "passthru": false,
@@ -1461,7 +1519,7 @@
     "topic": "",
     "topicType": "str",
     "x": 160,
-    "y": 400,
+    "y": 520,
     "wires": [
       [
         "wd_dose_out"
@@ -1482,7 +1540,7 @@
     "rh": 0,
     "inputs": 0,
     "x": 160,
-    "y": 440,
+    "y": 560,
     "wires": [
       [
         "wd_dose_fmt"
@@ -1494,46 +1552,23 @@
     "type": "function",
     "z": "wd_tab",
     "name": "Dosing totals",
-    "func": "const s = msg.payload || {};\nreturn [{payload: `${Number(s.alum_total_ml||0).toFixed(2)} mL ${s.alum_on ? '(dosing)' : ''}`},\n        {payload: `${Number(s.chlorine_total_ml||0).toFixed(2)} mL ${s.chlorine_on ? '(dosing)' : ''}`},\n        {payload: Number(s.alum_stock_ml||0)}, {payload: Number(s.chlorine_stock_ml||0)}];",
-    "outputs": 4,
+    "func": "const s = msg.payload || {};\nreturn [{payload: `${Number(s.chlorine_total_ml||0).toFixed(2)} mL ${s.chlorine_on ? '(dosing)' : ''}`},\n        {payload: Number(s.chlorine_stock_ml||0)}];",
+    "outputs": 2,
     "timeout": 0,
     "noerr": 0,
     "initialize": "",
     "finalize": "",
     "libs": [],
     "x": 390,
-    "y": 480,
+    "y": 600,
     "wires": [
       [
-        "wd_alum_tot"
-      ],
-      [
         "wd_cl_tot"
-      ],
-      [
-        "wd_alum_stock"
       ],
       [
         "wd_cl_stock"
       ]
     ]
-  },
-  {
-    "id": "wd_alum_tot",
-    "type": "ui_text",
-    "z": "wd_tab",
-    "group": "wd_g_dose",
-    "order": 6,
-    "width": 6,
-    "height": 1,
-    "name": "Total alum injected",
-    "label": "Total alum injected",
-    "format": "{{msg.payload}}",
-    "layout": "row-spread",
-    "className": "",
-    "x": 620,
-    "y": 520,
-    "wires": []
   },
   {
     "id": "wd_cl_tot",
@@ -1549,35 +1584,7 @@
     "layout": "row-spread",
     "className": "",
     "x": 620,
-    "y": 560,
-    "wires": []
-  },
-  {
-    "id": "wd_alum_stock",
-    "type": "ui_gauge",
-    "z": "wd_tab",
-    "name": "Alum stock",
-    "group": "wd_g_dose",
-    "order": 8,
-    "width": 3,
-    "height": 3,
-    "gtype": "gage",
-    "title": "Alum stock",
-    "label": "mL",
-    "format": "{{value}}",
-    "min": 0,
-    "max": 250,
-    "colors": [
-      "#ca3838",
-      "#e6a23c",
-      "#52c41a"
-    ],
-    "seg1": "25",
-    "seg2": "75",
-    "diff": false,
-    "className": "",
-    "x": 620,
-    "y": 600,
+    "y": 640,
     "wires": []
   },
   {
@@ -1586,7 +1593,7 @@
     "z": "wd_tab",
     "name": "Chlorine stock",
     "group": "wd_g_dose",
-    "order": 9,
+    "order": 8,
     "width": 3,
     "height": 3,
     "gtype": "gage",
@@ -1605,7 +1612,7 @@
     "diff": false,
     "className": "",
     "x": 620,
-    "y": 640,
+    "y": 680,
     "wires": []
   },
   {
@@ -2731,7 +2738,7 @@
     "type": "function",
     "z": "wd_tab",
     "name": "Power status",
-    "func": "const s = msg.payload || {};\nconst names = ['Intake','Alum','Chlorine','Delivery'];\nconst ch = (s.ch || []).map((on, i) => names[i] + (on ? ' ON' : ' off')).join(' . ');\nreturn [{payload: Number(s.rail_v || 0)}, {payload: `${s.mode || '?'} . rail ${s.rail || '?'}${s.fault ? ' . ' + s.fault : ''}`}, {payload: ch}];",
+    "func": "const s = msg.payload || {};\nconst names = ['Intake','Transfer','Chlorine','Delivery'];\nconst ch = (s.ch || []).map((on, i) => names[i] + (on ? ' ON' : ' off')).join(' . ');\nreturn [{payload: Number(s.rail_v || 0)}, {payload: `${s.mode || '?'} . rail ${s.rail || '?'}${s.fault ? ' . ' + s.fault : ''}`}, {payload: ch}];",
     "outputs": 3,
     "timeout": 0,
     "noerr": 0,

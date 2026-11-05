@@ -5,7 +5,7 @@
     * Two-deck wooden chassis on standoffs
     * Four 5 V TT geared DC motors + 65 mm off-road wheels (skid steer via L298N)
     * Stage 1 raw tank, Stage 2 gravity filtration column, Stage 3 disinfection/clean tank
-    * 5 V pumps: submersible intake (on the servo boom), alum dosing (peristaltic), chlorine dosing, delivery
+    * 5 V pumps: submersible intake (on the servo boom), transfer (column -> delivery tank), chlorine dosing, delivery
     * ESP32, 4-channel relay module, L298N driver, 10,000 mAh 5 V power bank
     * SG90 servo swinging the INTAKE boom (hose + pre-filter + pump) into the river; fixed delivery nozzle
 
@@ -214,7 +214,8 @@
                   mat="clean_water" mass="${water_mass}" collide="true"/>
 
   <!-- Pumps -->
-  <xacro:pump name="alum_dosing_pump"     parent="stage1_raw_tank"   x="0.0"  y="0.0"  z="${tank_size/2 + 0.016}"/>
+  <!-- transfer pump (relay CH2, was the alum pump): filtration column -> Stage 3 delivery tank -->
+  <xacro:pump name="transfer_pump"        parent="upper_deck"        x="0.035" y="0.010" z="${deck_t/2 + 0.016}"/>
   <xacro:pump name="chlorine_dosing_pump" parent="stage3_clean_tank" x="0.0"  y="0.0"  z="${tank_size/2 + 0.016}"/>
   <xacro:pump name="delivery_pump"        parent="upper_deck"        x="-0.150" y="-0.085" z="${deck_t/2 + 0.016}"/>
 

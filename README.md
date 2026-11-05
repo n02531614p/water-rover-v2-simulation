@@ -1,7 +1,7 @@
 # Water Rover v2 (Waterdroid) — autonomous river-to-homestead water treatment rover
 
-A 4WD rover that drives to a river, pumps raw water through a coarse pre-filter into Stage 1, doses alum,
-gravity-filters it through the Stage 2 column into Stage 3, chlorinates it, then drives to each homestead
+A 4WD rover that drives to a river, pumps raw water through a coarse pre-filter into Stage 1,
+gravity-filters it through the Stage 2 column, pumps it into the Stage 3 delivery tank, chlorinates it, then drives to each homestead
 and dispenses clean water through a fixed nozzle. An SG90 servo lowers the intake into the river and raises it before driving.
 
 ![rover](docs/rover_design.jpeg)
@@ -36,7 +36,7 @@ ros2 launch waterdroid_description display.launch.py             # model only, w
 ```
 
 The `gt` mission (default) runs the whole cycle on `v2_village.sdf`: drive to the river → servo lowers the
-intake → pump + alum → intake raised → filtration → chlorine + contact time → reverse, pivot → three
+intake → pump the batch → intake raised → filtration + transfer pump → chlorine + contact time → reverse, pivot → three
 homesteads (deliver through the fixed nozzle) → depot.
 Watch it with `ros2 topic echo /waterdroid/status`. Pause / resume / abort / E-stop:
 

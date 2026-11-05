@@ -3,7 +3,8 @@
  *
  * Merges every team member's subsystem onto one board with one pin map (src/rover_pins.h):
  *   #1  Intake & raw water collection      src/pump_cores.h   IntakeController   relay CH1
- *   #3  Chemical dosing (alum, chlorine)   src/pump_cores.h   DosingPump x2      relay CH2/CH3
+ *   #3  Chlorine dosing                    src/pump_cores.h   DosingPump         relay CH3
+ *   #5  Transfer pump column -> delivery   src/pump_cores.h   DosingPump         relay CH2 (alum dropped)
  *   #5  Filtration column monitoring       src/motion_cores.h FiltrationMonitor  S1/S2/S3 ADC
  *   #6  Servo-driven INTAKE boom (SG90)    src/motion_cores.h ServoArm           GPIO13 (delivery nozzle is fixed)
  *   #8  Clean water delivery pump          src/pump_cores.h   DeliveryController relay CH4
@@ -48,7 +49,8 @@ const char* MQTT_CLIENT = "waterdroid-esp32";
 // ---- Sensors fitted (Nov 2026: ONE water-flow sensor on the intake line, no level sensors) ----
 #define USE_LEVEL_SENSORS 0                    // 1 = analog level sensors on S2 (GPIO35) and S3 (GPIO36)
 const float FLOW_PULSES_PER_L = 5880.0f;       // YF-S401 (0.3-6 L/min) ~5880 pulses/L. CALIBRATE: pump 400 mL into a jug
-const float FILTER_ML_PER_S   = 3.0f;          // gravity column throughput. CALIBRATE: time 500 mL through it
+const float FILTER_ML_PER_S   = 3.0f;          // gravity Stage 1 -> column. CALIBRATE: time 380 mL through it
+const float TRANSFER_ML_PER_S = 8.0f;          // transfer pump (column -> delivery tank). CALIBRATE: time 200 mL
 const float BATCH_ML          = 380.0f;        // water per trip (400 mL tanks, leave headroom)
 
 // ---- Fixed route, dead reckoning (no GPS / compass yet). Route points: src/nav_cores.h ----
@@ -65,13 +67,13 @@ const float CLEAN_TANK_ML = 400.0f;            // Stage 3 capacity
 const float R_TOP = 10000.0f, R_BOTTOM = 10000.0f, VCAL = 1.000f;
 
 const uint8_t RELAY_PIN[PC_CHANNELS] = {PIN_RELAY_CH1, PIN_RELAY_CH2, PIN_RELAY_CH3, PIN_RELAY_CH4};
-const char*   RELAY_NAME[PC_CHANNELS] = {"intake_pump", "alum_pump", "chlorine_pump", "delivery_pump"};
-enum { CH_INTAKE = 0, CH_ALUM = 1, CH_CHLORINE = 2, CH_DELIVERY = 3 };
+const char*   RELAY_NAME[PC_CHANNELS] = {"intake_pump", "transfer_pump", "chlorine_pump", "delivery_pump"};
+enum { CH_INTAKE = 0, CH_TRANSFER = 1, CH_CHLORINE = 2, CH_DELIVERY = 3 };
 
 // ============================== STATE ==============================
 PowerSequencer     seq;
 IntakeController   intake;
-DosingPump         alum, chlorine;
+DosingPump         transfer, chlorine;   // transfer = column -> delivery tank (relay CH2)
 DeliveryController delivery;
 FiltrationMonitor  filt;
 ServoArm           arm;
@@ -92,7 +94,7 @@ float railV = 0; bool railValid = false;
 bool  estop = false;
 bool  atHomestead = false;         // true between arrived_home and leaving DISPENSING
 float intakeTargetMl = BATCH_ML;   // this fill (batch minus water already on board)
-float lastFlowMl = 0, lastAlumMl = 0, lastChlorMl = 0, lastDelivMl = 0;
+float lastFlowMl = 0, lastTransferMl = 0, lastChlorMl = 0, lastDelivMl = 0;
 uint32_t calibUntil = 0; const char* calibCmd = "stop";
 uint32_t tSample = 0, tLogic = 0, tPub = 0, tNet = 0, tSerial = 0;
 String serialLine;
@@ -117,7 +119,7 @@ void setEstop(bool on, const char* src) {
   arm.freeze(on);
   if (on) {
     seq.setMode(PM_EMERGENCY, now);
-    intake.stop(); alum.abort(); chlorine.abort(); delivery.abort("e-stop");
+    intake.stop(); transfer.abort(); chlorine.abort(); delivery.abort("e-stop");
     drive.stopNow();
   } else {
     seq.reset(now);                  // -> SLEEP; operator returns to ACTIVE on purpose
@@ -186,12 +188,13 @@ void onMqtt(char* topic, byte* payload, unsigned int len) {
   else if (t == "rover/nav/cmd") missionCommand(lm.startsWith("nav_") || lm.startsWith("calib_") ? lm : "nav_" + lm);
   else if (t == "rover/filtration/cmd") filt.manualPause = (lm == "pause");
   else if (t == "rover/dosing/cmd") {
-    if (lm == "stop") { alum.abort(); chlorine.abort(); }
-    else if (lm.indexOf("refill") >= 0) { if (lm.indexOf("chlor") >= 0) chlorine.setStock(250); else alum.setStock(250); }
-    else {
-      float ml = jsonNumber(lm, "ml", 0);
-      if (lm.indexOf("chlor") >= 0) chlorine.start(ml); else alum.start(ml);
-    }
+    if (lm == "stop") chlorine.abort();
+    else if (lm.indexOf("refill") >= 0) chlorine.setStock(250);
+    else if (lm.indexOf("chlor") >= 0) chlorine.start(jsonNumber(lm, "ml", 0));   // alum is no longer fitted
+  }
+  else if (t == "rover/transfer/cmd") {           // transfer pump: {"ml":N} | run (= what is in the column) | stop
+    if (lm == "stop") transfer.abort();
+    else transfer.start(lm.startsWith("{") ? jsonNumber(lm, "ml", 0) : vol.columnMl);
   }
   else if (t == "rover/arm/cmd") arm.command(m.c_str());
   else if (t == "rover/delivery/cmd") {
@@ -228,8 +231,9 @@ void controlStep() {
 
   // ---- #11 mission ----
   MissionInputs in;
-  in.intakeBusy = intake.want;
-  in.alumBusy = alum.busy();
+  in.intakeBusy = intake.requested;            // paused by the column-overflow guard still counts as busy
+  in.transferBusy = transfer.busy();
+  in.columnMl = vol.columnMl;
   in.chlorineBusy = chlorine.busy();
   in.s1Pct = s1; in.s2Pct = s2;           // estimated by the VolumeModel without level sensors
   in.armDeployed = arm.deployed(); in.armStowed = arm.stowed();
@@ -238,9 +242,9 @@ void controlStep() {
   mission.tick(now, in);
 
   MissionActions& a = mission.act;
-  if (a.stopAll) { intake.stop(); alum.abort(); chlorine.abort(); delivery.abort("mission"); }
+  if (a.stopAll) { intake.stop(); transfer.abort(); chlorine.abort(); delivery.abort("mission"); }
   if (a.startIntake) startIntake();
-  if (a.doseAlumMl > 0) alum.start(a.doseAlumMl);
+  if (a.transferMl > 0) transfer.start(a.transferMl);
   if (a.doseChlorineMl > 0) chlorine.start(a.doseChlorineMl);
   if (a.armExtend) arm.command("EXTEND");
   if (a.armRetract) arm.command("RETRACT");
@@ -252,7 +256,7 @@ void controlStep() {
   // ---- water book-keeping: flow sensor + doses + deliveries -> estimated tank volumes ----
   flow.tick(now, flowPulses);
   vol.addRaw(flow.totalMl - lastFlowMl);          lastFlowMl = flow.totalMl;
-  vol.addRaw(alum.totalMl - lastAlumMl);          lastAlumMl = alum.totalMl;
+  vol.moveColumnToClean(transfer.totalMl - lastTransferMl); lastTransferMl = transfer.totalMl;
   vol.addClean(chlorine.totalMl - lastChlorMl);   lastChlorMl = chlorine.totalMl;
   vol.removeClean(delivery.totalMl - lastDelivMl); lastDelivMl = delivery.totalMl;
   vol.tick(now);
@@ -267,14 +271,14 @@ void controlStep() {
   intake.tick(now, seq.on[CH_INTAKE], fillPct, !filt.allowIntake || estop || !arm.deployed());
 
   // ---- #3 dosing, #8 delivery ----
-  alum.tick(now, seq.on[CH_ALUM]);
+  transfer.tick(now, seq.on[CH_TRANSFER]);
   chlorine.tick(now, seq.on[CH_CHLORINE]);
   bool manualDelivery = mission.state == MS_IDLE || mission.state == MS_PAUSED || mission.state == MS_COMPLETE;
   delivery.tick(now, seq.on[CH_DELIVERY], atHomestead || manualDelivery, true, s3);   // fixed nozzle: no arm interlock
 
   // ---- #10 power sequencing: pumps start one at a time, brownout guard ----
   seq.setWant(CH_INTAKE, intake.want);
-  seq.setWant(CH_ALUM, alum.want);
+  seq.setWant(CH_TRANSFER, transfer.want);
   seq.setWant(CH_CHLORINE, chlorine.want);
   seq.setWant(CH_DELIVERY, delivery.want);
   seq.tick(now, railV, railValid);
@@ -334,11 +338,13 @@ void publishAll() {
            (intake.state == IN_FAULT_DRY || intake.state == IN_FAULT_TIMEOUT) ? IntakeController::name(intake.state) : "");
   mqtt.publish("rover/intake/status", js);
 
-  snprintf(js, sizeof(js), "{\"alum_on\":%s,\"chlorine_on\":%s,\"alum_total_ml\":%.2f,\"chlorine_total_ml\":%.2f,"
-           "\"alum_stock_ml\":%.1f,\"chlorine_stock_ml\":%.1f,\"alum_last_ml\":%.2f,\"chlorine_last_ml\":%.2f}",
-           seq.on[CH_ALUM] ? "true" : "false", seq.on[CH_CHLORINE] ? "true" : "false",
-           alum.totalMl, chlorine.totalMl, alum.stockMl, chlorine.stockMl, alum.lastDoseMl, chlorine.lastDoseMl);
+  snprintf(js, sizeof(js), "{\"chlorine_on\":%s,\"chlorine_total_ml\":%.2f,\"chlorine_stock_ml\":%.1f,\"chlorine_last_ml\":%.2f}",
+           seq.on[CH_CHLORINE] ? "true" : "false", chlorine.totalMl, chlorine.stockMl, chlorine.lastDoseMl);
   mqtt.publish("rover/dosing/status", js);
+
+  snprintf(js, sizeof(js), "{\"pump\":%s,\"total_ml\":%.0f,\"column_ml\":%.0f,\"clean_ml\":%.0f}",
+           seq.on[CH_TRANSFER] ? "true" : "false", transfer.totalMl, vol.columnMl, vol.cleanMl);
+  mqtt.publish("rover/transfer/status", js);
 
   snprintf(js, sizeof(js), "{\"s1\":%.1f,\"s2\":%.1f,\"s3\":%.1f,\"intake\":%s,\"flow\":%.3f,\"health\":\"%s\"}",
            s1, s2, s3, seq.on[CH_INTAKE] ? "true" : "false", filt.flowPctPerS, FiltrationMonitor::name(filt.health));
@@ -380,11 +386,11 @@ void publishAll() {
 
   snprintf(js, sizeof(js),
     "{\"state\":\"%s\",\"state_id\":%u,\"battery_v\":%.2f,\"estop\":%s,\"s1\":%.1f,\"s2\":%.1f,\"s3\":%.1f,"
-    "\"relays\":[%d,%d,%d,%d],\"arm\":%d,\"drive\":[%d,%d],\"alum_ml\":%.2f,\"chlorine_ml\":%.2f,"
+    "\"relays\":[%d,%d,%d,%d],\"arm\":%d,\"drive\":[%d,%d],\"transfer_ml\":%.0f,\"chlorine_ml\":%.2f,"
     "\"delivered_ml\":%.0f,\"health\":\"%s\",\"power\":\"%s\",\"rssi\":%d}",
     st, mission.stateId(), railV, estop ? "true" : "false", s1, s2, s3,
     seq.on[0], seq.on[1], seq.on[2], seq.on[3], arm.angle, drive.left, drive.right,
-    alum.totalMl, chlorine.totalMl, delivery.totalMl, FiltrationMonitor::name(filt.health),
+    transfer.totalMl, chlorine.totalMl, delivery.totalMl, FiltrationMonitor::name(filt.health),
     PowerSequencer::modeName(seq.mode), WiFi.RSSI());
   mqtt.publish("rover/telemetry", js);
 }
@@ -396,7 +402,7 @@ void serviceNetwork(uint32_t now) {
   if (!mqtt.connected() && mqtt.connect(MQTT_CLIENT, nullptr, nullptr, "rover/online", 0, true, "0")) {
     const char* subs[] = {"rover/estop", "rover/mission/cmd", "rover/power/cmd", "rover/intake/cmd",
                           "rover/filtration/cmd", "rover/dosing/cmd", "rover/arm/cmd",
-                          "rover/delivery/cmd", "rover/drive/cmd", "rover/nav/cmd"};
+                          "rover/delivery/cmd", "rover/drive/cmd", "rover/nav/cmd", "rover/transfer/cmd"};
     for (const char* s : subs) mqtt.subscribe(s);
     mqtt.publish("rover/online", "1", true);
   }
@@ -419,7 +425,7 @@ void setup() {
   servo.write(ServoArm::STOW);
 
   // Pump calibration (measure and adjust)
-  alum.rateMlPerS = 1.0f;     alum.maxDoseMl = 4.0f;       // 380 mL batch needs ~1.1 mL
+  transfer.rateMlPerS = TRANSFER_ML_PER_S; transfer.maxDoseMl = 400.0f; transfer.stockMl = 1e9f;   // not a chemical: no stock limit
   chlorine.rateMlPerS = 1.0f; chlorine.maxDoseMl = 4.0f;
   delivery.flowMlPerS = 25.0f;
 
@@ -427,7 +433,8 @@ void setup() {
   pinMode(PIN_FLOW_SENSOR, INPUT);               // GPIO34 has no pull-up: see docs/HARDWARE.md divider
   attachInterrupt(digitalPinToInterrupt(PIN_FLOW_SENSOR), onFlowPulse, FALLING);
   flow.pulsesPerLitre = FLOW_PULSES_PER_L;
-  vol.filterMlPerS = vol.drainMlPerS = FILTER_ML_PER_S;
+  vol.filterMlPerS = FILTER_ML_PER_S;
+  vol.drainMlPerS = 0;                           // the transfer pump moves column water, not gravity
   intake.cfg.fullPct = 100.0f;                   // "full" = the flow sensor counted the batch
   intake.cfg.maxRunMs = 90000;                   // motor-burnout cutoff (a 380 mL batch takes ~20-60 s)
   intake.cfg.dryCheckMs = 4000;                  // relay ON 4 s ...

@@ -174,7 +174,7 @@
         "id": "fn_alum_pulse_timer",
         "type": "function",
         "z": "tab_chem_dosing",
-        "name": "Stage 1 Alum Precision Dosing Driver",
+        "name": "Stage 1 Alum driver (NOT FITTED - debug only)",
         "func": "/**\n * Stage 1 Alum Pump Pulse Controller\n * Precision Relay / GPIO control with exact hardware pulse cutoff.\n */\n\nlet cmd = msg.payload;\nlet activeTimer = context.get('alum_timer_id');\n\n// Handle forced abort or manual off\nif (cmd === 0 || (typeof cmd === 'object' && cmd.action === 'OFF')) {\n    if (activeTimer) {\n        clearTimeout(activeTimer);\n        context.set('alum_timer_id', null);\n    }\n    node.status({ fill: 'grey', shape: 'dot', text: 'Pump IDLE (Stopped)' });\n    return { topic: 'hardware/relay/stage1_alum', payload: 0, state: 'OFF' };\n}\n\nif (typeof cmd === 'object' && cmd.duration_ms > 0) {\n    let durationMs = cmd.duration_ms;\n    let doseMl = cmd.dose_volume_ml;\n    let triggerMode = cmd.trigger_mode;\n    \n    // Clear previous timer if still lingering\n    if (activeTimer) {\n        clearTimeout(activeTimer);\n    }\n    \n    node.status({\n        fill: 'blue',\n        shape: 'dot',\n        text: `Injecting ${doseMl} mL Alum (${(durationMs/1000).toFixed(1)}s via ${triggerMode})`\n    });\n    \n    // 1. Immediately turn Relay / Pump ON\n    node.send({ \n        topic: 'hardware/relay/stage1_alum',\n        payload: 1, \n        state: 'ON',\n        chemical: 'Alum',\n        dose_ml: doseMl,\n        duration_ms: durationMs \n    });\n    \n    // 2. Schedule precise non-blocking hardware cutoff\n    let timerId = setTimeout(() => {\n        node.status({ fill: 'green', shape: 'ring', text: `Dose complete (${doseMl} mL injected)` });\n        node.send({ \n            topic: 'hardware/relay/stage1_alum',\n            payload: 0, \n            state: 'OFF',\n            chemical: 'Alum',\n            completed_at: new Date().toISOString()\n        });\n        context.set('alum_timer_id', null);\n    }, durationMs);\n    \n    context.set('alum_timer_id', timerId);\n}\n\nreturn null;",
         "outputs": 1,
         "noerr": 0,
@@ -185,8 +185,7 @@
         "y": 180,
         "wires": [
             [
-                "dbg_alum_out",
-                "fn_dose_to_esp32"
+                "dbg_alum_out"
             ]
         ]
     },
@@ -394,34 +393,6 @@
         "className": ""
     },
     {
-        "id": "chem_btn_alum",
-        "type": "ui_button",
-        "z": "tab_chem_dosing",
-        "name": "Dose alum 1.1 mL",
-        "group": "chem_ui_group",
-        "order": 1,
-        "width": 3,
-        "height": 1,
-        "passthru": false,
-        "label": "Dose alum 1.1 mL",
-        "tooltip": "",
-        "color": "#ffffff",
-        "bgcolor": "#8e44ad",
-        "className": "",
-        "icon": "",
-        "payload": "{\"pump\":\"alum\",\"ml\":1.1}",
-        "payloadType": "str",
-        "topic": "",
-        "topicType": "str",
-        "x": 1040,
-        "y": 440,
-        "wires": [
-            [
-                "mqtt_out_dose"
-            ]
-        ]
-    },
-    {
         "id": "chem_btn_cl",
         "type": "ui_button",
         "z": "tab_chem_dosing",
@@ -475,8 +446,8 @@
         "type": "function",
         "z": "tab_chem_dosing",
         "name": "Totals (mL)",
-        "func": "const s = msg.payload || {};\nreturn [{payload: Number(s.alum_total_ml || 0).toFixed(2) + ' mL'}, {payload: Number(s.chlorine_total_ml || 0).toFixed(2) + ' mL'},\n        {payload: Number(s.alum_stock_ml || 0)}, {payload: Number(s.chlorine_stock_ml || 0)}];",
-        "outputs": 4,
+        "func": "const s = msg.payload || {};\nreturn [{payload: Number(s.chlorine_total_ml || 0).toFixed(2) + ' mL'}, {payload: Number(s.chlorine_stock_ml || 0)}];",
+        "outputs": 2,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -486,35 +457,12 @@
         "y": 540,
         "wires": [
             [
-                "chem_txt_alum"
-            ],
-            [
                 "chem_txt_cl"
-            ],
-            [
-                "chem_g_alum"
             ],
             [
                 "chem_g_cl"
             ]
         ]
-    },
-    {
-        "id": "chem_txt_alum",
-        "type": "ui_text",
-        "z": "tab_chem_dosing",
-        "group": "chem_ui_group",
-        "order": 3,
-        "width": 6,
-        "height": 1,
-        "name": "Total alum injected",
-        "label": "Total alum injected",
-        "format": "{{msg.payload}}",
-        "layout": "row-spread",
-        "className": "",
-        "x": 1280,
-        "y": 520,
-        "wires": []
     },
     {
         "id": "chem_txt_cl",
@@ -531,34 +479,6 @@
         "className": "",
         "x": 1280,
         "y": 560,
-        "wires": []
-    },
-    {
-        "id": "chem_g_alum",
-        "type": "ui_gauge",
-        "z": "tab_chem_dosing",
-        "name": "Alum stock",
-        "group": "chem_ui_group",
-        "order": 5,
-        "width": 3,
-        "height": 3,
-        "gtype": "gage",
-        "title": "Alum stock",
-        "label": "mL",
-        "format": "{{value}}",
-        "min": 0,
-        "max": 250,
-        "colors": [
-            "#e6a23c",
-            "#3498db",
-            "#2ecc71"
-        ],
-        "seg1": "",
-        "seg2": "",
-        "diff": false,
-        "className": "",
-        "x": 1280,
-        "y": 600,
         "wires": []
     },
     {

@@ -1,5 +1,5 @@
 {
-  "description": "Estimated tank volumes without level sensors: IN = intake mL (flow-meter TOT), AL = alum mL, CL = chlorine mL, OUT = delivered mL (all running totals). Gravity flow Stage 1 -> column -> Stage 3 at FILT mL/s (calibrate: time 500 mL through the column). S1/S2/S3 in % feed the level-monitor and mission-fsm; FLTR = water still filtering.",
+  "description": "Estimated tank volumes without level sensors: IN = intake mL (flow-meter TOT), TR = transfer-pump mL (column -> delivery tank), CL = chlorine mL, OUT = delivered mL (all running totals). Gravity flow Stage 1 -> column -> Stage 3 at FILT mL/s (calibrate: time 500 mL through the column). S1/S2/S3 in % feed the level-monitor and mission-fsm; COL = column mL -> mission COL; FLTR = water still filtering.",
   "nodes": [
     {
       "id": "in00",
@@ -20,10 +20,11 @@
         "x": 102,
         "y": 0
       },
-      "label": "AL",
+      "label": "TR",
       "boundLiterals": {
         "__out__": "0"
-      }
+      },
+      "description": "transfer pump total mL"
     },
     {
       "id": "in02",
@@ -121,9 +122,19 @@
     },
     {
       "id": "out04",
-      "type": "xod/patch-nodes/output-boolean",
+      "type": "xod/patch-nodes/output-number",
       "position": {
         "x": 408,
+        "y": 306
+      },
+      "label": "COL",
+      "description": "column mL"
+    },
+    {
+      "id": "out05",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 510,
         "y": 306
       },
       "label": "FLTR"

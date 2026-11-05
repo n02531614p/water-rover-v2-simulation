@@ -113,7 +113,7 @@ group('wd_g_state', 'wd_t_mission', 'Master System State (#11)', 2)
 group('wd_g_log', 'wd_t_mission', 'Mission log', 3)
 group('wd_g_intake', 'wd_t_water', 'Intake (#1)', 1, 4)
 group('wd_g_filter', 'wd_t_water', 'Filtration (#5)', 2, 6)
-group('wd_g_dose', 'wd_t_water', 'Chemical dosing (#3)', 3, 6)
+group('wd_g_dose', 'wd_t_water', 'Transfer pump + chlorine (#5 #3)', 3, 6)
 group('wd_g_arm', 'wd_t_arm', 'Intake arm - servo (#6)', 1)
 group('wd_g_deliv', 'wd_t_arm', 'Clean water delivery (#8)', 2)
 group('wd_g_drive', 'wd_t_drive', 'Teleoperation D-pad (#9)', 1, 4)
@@ -161,7 +161,7 @@ gauge('wd_batt_gauge', 'wd_g_power', '5 V rail', 'V', 3.5, 5.5, 1, 'mission', se
 mqtt_in('wd_tel_in', 'rover/telemetry', ['wd_tel_csv', 'wd_tel_last'], 'log')
 func('wd_tel_csv', 'Telemetry -> CSV line',
      "const t = msg.payload || {};\n"
-     "const cols = ['state','state_id','battery_v','s1','s2','s3','arm','alum_ml','chlorine_ml','delivered_ml','health','estop'];\n"
+     "const cols = ['state','state_id','battery_v','s1','s2','s3','arm','transfer_ml','chlorine_ml','delivered_ml','health','estop'];\n"
      "let line = new Date().toISOString() + ',' + cols.map(c => t[c] !== undefined ? (typeof t[c] === 'object' ? JSON.stringify(t[c]).replace(/,/g,';') : t[c]) : '').join(',');\n"
      "if (!context.get('header')) { context.set('header', true); node.send({payload: 'time,' + cols.join(',')}); }\n"
      "msg.payload = line;\nreturn msg;", 1, [['wd_tel_file']], 'log')
@@ -212,33 +212,34 @@ template('wd_filter_badge', 'wd_g_filter', 'Health badge',
 button('wd_btn_f_pause', 'wd_g_filter', 'Pause intake', 'pause', 'str', ['wd_filter_out'], 'filter', 5, width=3)
 button('wd_btn_f_auto', 'wd_g_filter', 'Auto', 'auto', 'str', ['wd_filter_out'], 'filter', 6, width=3)
 
-# ======================================================================= Dosing (#3)
+# ======================================================================= Transfer pump (#5) + chlorine (#3)
+mqtt_out('wd_tr_out', 'rover/transfer/cmd', 'dose')
+button('wd_btn_tr_run', 'wd_g_dose', 'Run transfer pump', 'run', 'str', ['wd_tr_out'], 'dose', 1, width=3, bg='#2980b9')
+button('wd_btn_tr_stop', 'wd_g_dose', 'Stop transfer', 'stop', 'str', ['wd_tr_out'], 'dose', 2, width=3)
+mqtt_in('wd_tr_in', 'rover/transfer/status', ['wd_tr_fmt'], 'dose')
+func('wd_tr_fmt', 'Transfer status',
+     "const s = msg.payload || {};\n"
+     "return [{payload: `${s.pump ? 'PUMPING' : 'idle'} . column ${Number(s.column_ml||0).toFixed(0)} mL . moved ${Number(s.total_ml||0).toFixed(0)} mL total`}];",
+     1, [['wd_tr_txt']], 'dose')
+text('wd_tr_txt', 'wd_g_dose', 'Transfer (column -> delivery tank)', 3, 'dose')
 mqtt_out('wd_dose_out', 'rover/dosing/cmd', 'dose')
-numeric('wd_num_alum', 'wd_g_dose', 'Alum mL', 0, 4, 0.1, 1, 'dose', ['wd_dose_alum_fmt'], 'alum')
-func('wd_dose_alum_fmt', 'store alum mL', "flow.set('alum_ml', Number(msg.payload));\nreturn null;", 1, [[]], 'dose')
-button('wd_btn_dose_alum', 'wd_g_dose', 'Dose alum', 'alum', 'str', ['wd_dose_build'], 'dose', 2, width=3,
-       bg='#8e44ad')
-numeric('wd_num_cl', 'wd_g_dose', 'Chlorine mL', 0, 4, 0.1, 3, 'dose', ['wd_dose_cl_fmt'], 'chlorine')
+numeric('wd_num_cl', 'wd_g_dose', 'Chlorine mL', 0, 4, 0.1, 4, 'dose', ['wd_dose_cl_fmt'], 'chlorine')
 func('wd_dose_cl_fmt', 'store chlorine mL', "flow.set('chlorine_ml', Number(msg.payload));\nreturn null;", 1,
      [[]], 'dose')
-button('wd_btn_dose_cl', 'wd_g_dose', 'Dose chlorine', 'chlorine', 'str', ['wd_dose_build'], 'dose', 4, width=3,
+button('wd_btn_dose_cl', 'wd_g_dose', 'Dose chlorine', 'chlorine', 'str', ['wd_dose_build'], 'dose', 5, width=3,
        bg='#16a085')
 func('wd_dose_build', 'Build dose command',
-     "const pump = msg.payload;\n"
-     "const ml = pump === 'alum' ? (flow.get('alum_ml') ?? 1.1) : (flow.get('chlorine_ml') ?? 1.1);\n"
-     "msg.payload = JSON.stringify({pump: pump, ml: ml});\nreturn msg;", 1, [['wd_dose_out']], 'dose')
-button('wd_btn_dose_stop', 'wd_g_dose', 'Stop dosing', 'stop', 'str', ['wd_dose_out'], 'dose', 5, width=6)
+     "msg.payload = JSON.stringify({pump: 'chlorine', ml: flow.get('chlorine_ml') ?? 1.1});\nreturn msg;",
+     1, [['wd_dose_out']], 'dose')
+button('wd_btn_dose_stop', 'wd_g_dose', 'Stop dosing', 'stop', 'str', ['wd_dose_out'], 'dose', 6, width=6)
 mqtt_in('wd_dose_in', 'rover/dosing/status', ['wd_dose_fmt'], 'dose')
 func('wd_dose_fmt', 'Dosing totals',
      "const s = msg.payload || {};\n"
-     "return [{payload: `${Number(s.alum_total_ml||0).toFixed(2)} mL ${s.alum_on ? '(dosing)' : ''}`},\n"
-     "        {payload: `${Number(s.chlorine_total_ml||0).toFixed(2)} mL ${s.chlorine_on ? '(dosing)' : ''}`},\n"
-     "        {payload: Number(s.alum_stock_ml||0)}, {payload: Number(s.chlorine_stock_ml||0)}];", 4,
-     [['wd_alum_tot'], ['wd_cl_tot'], ['wd_alum_stock'], ['wd_cl_stock']], 'dose')
-text('wd_alum_tot', 'wd_g_dose', 'Total alum injected', 6, 'dose')
+     "return [{payload: `${Number(s.chlorine_total_ml||0).toFixed(2)} mL ${s.chlorine_on ? '(dosing)' : ''}`},\n"
+     "        {payload: Number(s.chlorine_stock_ml||0)}];", 2,
+     [['wd_cl_tot'], ['wd_cl_stock']], 'dose')
 text('wd_cl_tot', 'wd_g_dose', 'Total chlorine injected', 7, 'dose')
-gauge('wd_alum_stock', 'wd_g_dose', 'Alum stock', 'mL', 0, 250, 8, 'dose', seg=('25', '75'))
-gauge('wd_cl_stock', 'wd_g_dose', 'Chlorine stock', 'mL', 0, 250, 9, 'dose', seg=('25', '75'))
+gauge('wd_cl_stock', 'wd_g_dose', 'Chlorine stock', 'mL', 0, 250, 8, 'dose', seg=('25', '75'))
 
 # ======================================================================= Arm (#6)
 mqtt_out('wd_arm_out', 'rover/arm/cmd', 'arm')
@@ -338,7 +339,7 @@ for i, (lbl, p, bg) in enumerate([('Active', 'active', '#27ae60'), ('Sleep', 'sl
     button(f'wd_btn_p{i}', 'wd_g_power', lbl, p, 'str', ['wd_power_out'], 'power', 2 + i, width=3, bg=bg)
 mqtt_in('wd_power_in', 'rover/power/status', ['wd_power_fmt'], 'power')
 func('wd_power_fmt', 'Power status',
-     "const s = msg.payload || {};\nconst names = ['Intake','Alum','Chlorine','Delivery'];\n"
+     "const s = msg.payload || {};\nconst names = ['Intake','Transfer','Chlorine','Delivery'];\n"
      "const ch = (s.ch || []).map((on, i) => names[i] + (on ? ' ON' : ' off')).join(' . ');\n"
      "return [{payload: Number(s.rail_v || 0)}, {payload: `${s.mode || '?'} . rail ${s.rail || '?'}${s.fault ? ' . ' + s.fault : ''}`}, {payload: ch}];",
      3, [['wd_batt_gauge'], ['wd_power_txt'], ['wd_relay_txt']], 'power')

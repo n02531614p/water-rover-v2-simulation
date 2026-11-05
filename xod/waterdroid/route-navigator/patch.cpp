@@ -60,7 +60,7 @@ struct FlowMeter {
 struct VolumeModel {
   float rawCapMl = 400, clampColumnMl = 100, cleanCapMl = 400;   // 400 mL tanks (Nov 2026)
   float filterMlPerS = 3.0f;      // CALIBRATE: real sand/charcoal column throughput
-  float drainMlPerS  = 3.0f;      // column -> Stage 3
+  float drainMlPerS  = 0.0f;      // column -> Stage 3 by gravity; 0 = the TRANSFER PUMP moves it (current build)
   // state / outputs
   float rawMl = 0, columnMl = 0, cleanMl = 0;
   bool  started = false;
@@ -70,6 +70,12 @@ struct VolumeModel {
   void addClean(float ml) { cleanMl += ml; if (cleanMl > cleanCapMl) cleanMl = cleanCapMl; }
   void removeClean(float ml) { cleanMl -= ml; if (cleanMl < 0) cleanMl = 0; }
   void reset(float raw = 0, float clean = 0) { rawMl = raw; columnMl = 0; cleanMl = clean; }
+  // transfer pump (relay CH2): filtered water from the column into the Stage 3 delivery tank
+  void moveColumnToClean(float ml) {
+    if (ml > columnMl) ml = columnMl;
+    if (ml > cleanCapMl - cleanMl) ml = cleanCapMl - cleanMl;
+    if (ml > 0) { columnMl -= ml; cleanMl += ml; }
+  }
 
   void tick(uint32_t now) {
     float dt = started ? nc_since(now, last) / 1000.0f : 0;

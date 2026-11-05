@@ -1,5 +1,5 @@
 {
-  "description": "Issue #11 central state machine: Navigating -> Pumping -> Dosing -> Delivering. Arrival pulses come from navigation (Issue #7), the ROS 2 sim or dashboard buttons. Outputs one-shot pulses that drive the subsystem nodes, and DRV=false inhibits the motors while pumps run. SID matches the Node-RED serial bridge: 0 IDLE 1 NAV_RIVER 2 INTAKE_DOSE 3 NAV_HOMESTEAD 4 DELIVER_WATER 5 EMERGENCY_STOP. ST = detailed state 0-10 (STATE_IDLE ... STATE_EMERGENCY_STOP).",
+  "description": "Issue #11 central state machine: Navigating -> Pumping -> Dosing -> Delivering. Arrival pulses come from navigation (Issue #7), the ROS 2 sim or dashboard buttons. Outputs one-shot pulses that drive the subsystem nodes (TRF/TRML -> a dosing-pump node used as the transfer pump), and DRV=false inhibits the motors while pumps run. SID matches the Node-RED serial bridge: 0 IDLE 1 NAV_RIVER 2 INTAKE_DOSE 3 NAV_HOMESTEAD 4 DELIVER_WATER 5 EMERGENCY_STOP. ST = detailed state 0-10 (STATE_IDLE ... STATE_EMERGENCY_STOP).",
   "nodes": [
     {
       "id": "in00",
@@ -120,11 +120,11 @@
         "x": 918,
         "y": 0
       },
-      "label": "ALB",
+      "label": "TRB",
       "boundLiterals": {
         "__out__": "False"
       },
-      "description": "alum busy"
+      "description": "transfer pump busy"
     },
     {
       "id": "in10",
@@ -165,9 +165,22 @@
     },
     {
       "id": "in13",
-      "type": "xod/patch-nodes/input-boolean",
+      "type": "xod/patch-nodes/input-number",
       "position": {
         "x": 1326,
+        "y": 0
+      },
+      "label": "COL",
+      "boundLiterals": {
+        "__out__": "0"
+      },
+      "description": "column mL (volume-model)"
+    },
+    {
+      "id": "in14",
+      "type": "xod/patch-nodes/input-boolean",
+      "position": {
+        "x": 1428,
         "y": 0
       },
       "label": "DEP",
@@ -177,10 +190,10 @@
       "description": "intake lowered"
     },
     {
-      "id": "in14",
+      "id": "in15",
       "type": "xod/patch-nodes/input-boolean",
       "position": {
-        "x": 1428,
+        "x": 1530,
         "y": 0
       },
       "label": "STW",
@@ -190,10 +203,10 @@
       "description": "intake raised"
     },
     {
-      "id": "in15",
+      "id": "in16",
       "type": "xod/patch-nodes/input-boolean",
       "position": {
-        "x": 1530,
+        "x": 1632,
         "y": 0
       },
       "label": "DLB",
@@ -203,10 +216,10 @@
       "description": "delivery busy"
     },
     {
-      "id": "in16",
+      "id": "in17",
       "type": "xod/patch-nodes/input-number",
       "position": {
-        "x": 1632,
+        "x": 1734,
         "y": 0
       },
       "label": "CML",
@@ -216,10 +229,10 @@
       "description": "Stage 3 mL"
     },
     {
-      "id": "in17",
+      "id": "in18",
       "type": "xod/patch-nodes/input-number",
       "position": {
-        "x": 1734,
+        "x": 1836,
         "y": 0
       },
       "label": "HOMS",
@@ -229,10 +242,10 @@
       "description": "homesteads per trip"
     },
     {
-      "id": "in18",
+      "id": "in19",
       "type": "xod/patch-nodes/input-number",
       "position": {
-        "x": 1836,
+        "x": 1938,
         "y": 0
       },
       "label": "CNT",
@@ -293,7 +306,8 @@
         "x": 408,
         "y": 306
       },
-      "label": "ALUM"
+      "label": "TRF",
+      "description": "run transfer pump"
     },
     {
       "id": "out05",
@@ -302,7 +316,7 @@
         "x": 510,
         "y": 306
       },
-      "label": "ALML"
+      "label": "TRML"
     },
     {
       "id": "out06",

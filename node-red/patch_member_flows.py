@@ -200,6 +200,15 @@ put(f, text('chem_txt_alum', 'tab_chem_dosing', 'chem_ui_group', 'Total alum inj
 put(f, text('chem_txt_cl', 'tab_chem_dosing', 'chem_ui_group', 'Total chlorine injected', 4, 1280, 560))
 put(f, gauge('chem_g_alum', 'tab_chem_dosing', 'chem_ui_group', 'Alum stock', 'mL', 0, 250, 5, 1280, 600))
 put(f, gauge('chem_g_cl', 'tab_chem_dosing', 'chem_ui_group', 'Chlorine stock', 'mL', 0, 250, 6, 1280, 640))
+# Nov 2026: alum dropped (its pump became the column -> delivery transfer pump). Keep the alum maths for
+# reference but never send it to the rover, and show chlorine only on the panel.
+get(f, 'fn_alum_pulse_timer')['wires'] = [['dbg_alum_out']]
+f = [n for n in f if n['id'] not in ('chem_btn_alum', 'chem_txt_alum', 'chem_g_alum')]
+get(f, 'chem_status_fmt')['func'] = ("const s = msg.payload || {};\n"
+                                    "return [{payload: Number(s.chlorine_total_ml || 0).toFixed(2) + ' mL'}, {payload: Number(s.chlorine_stock_ml || 0)}];")
+get(f, 'chem_status_fmt')['outputs'] = 2
+get(f, 'chem_status_fmt')['wires'] = [['chem_txt_cl'], ['chem_g_cl']]
+get(f, 'fn_alum_pulse_timer')['name'] = 'Stage 1 Alum driver (NOT FITTED - debug only)'
 save('chemical_dosing_flow.json', f)
 
 # ------------------------------------------------------------------ #1 river intake

@@ -9,14 +9,11 @@ water_processor:
     filter_column_capacity_ml: 100.0  # Stage 2 column head space
     intake_flow_ml_s: 20.0            # 5 V submersible pump with ~0.5 m lift
     filter_flow_ml_s: 10.0            # gravity column throughput (real sand/charcoal ~3 mL/s)
-    column_drain_ml_s: 10.0
+    transfer_flow_ml_s: 8.0           # transfer pump: column -> delivery tank (calibrate)
     delivery_flow_ml_s: 25.0          # 5 V delivery pump
-    alum_pump_ml_s: 1.0               # peristaltic: 2 s = 2 mL (Issue #3)
     chlorine_pump_ml_s: 1.0
-    alum_ml_per_litre: 3.0            # 1 % alum stock -> ~30 mg/L
     chlorine_ml_per_litre: 3.0        # 0.07 % NaOCl stock (bleach 1:50) -> ~2 mg/L
     max_single_dose_ml: 4.0
-    alum_stock_ml: 250.0
     chlorine_stock_ml: 250.0
     intake_max_run_s: 90.0            # motor-burnout cutoff (Issue #1)
     dry_run_timeout_s: 3.0            # no water at the intake this long -> DRY_RUN fault
@@ -43,7 +40,7 @@ mission_navigator:
     pump_timeout_s: 120.0
     filter_timeout_s: 300.0
     chlorine_contact_s: 5.0           # shortened for simulation (real: 30 min)
-    alum_ml_per_litre: 3.0
+    transfer_min_ml: 20.0             # run the transfer pump once this much is in the column
     raw_tank_capacity_ml: 380.0       # batch per trip (400 mL tanks)
     action_timeout_s: 60.0
     pose_source: ground_truth          # mission:=route switches this to dead_reckoning

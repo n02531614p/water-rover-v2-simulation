@@ -8,7 +8,7 @@ Node-RED flows be exercised end-to-end in simulation.
 
 Hardware it stands in for (relay channel in brackets):
   Issue #1  5 V submersible intake pump        [CH1] -> Stage 1 raw tank (on the SG90 intake boom)
-  Issue #3  5 V alum peristaltic dosing pump    [CH2] -> Stage 1
+  Issue #5  5 V transfer pump                   [CH2] filtration column -> Stage 3 delivery tank
             5 V chlorine dosing pump            [CH3] -> Stage 3
   Issue #5  Stage 2 gravity filtration column   (no pump, gravity flow S1 -> S3)
   Issue #8  5 V delivery pump                   [CH4] Stage 3 -> homestead container
@@ -30,7 +30,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Bool, String
 
-RELAY_NAMES = ('intake_pump', 'alum_pump', 'chlorine_pump', 'delivery_pump')
+RELAY_NAMES = ('intake_pump', 'transfer_pump', 'chlorine_pump', 'delivery_pump')
 
 
 class WaterProcessor(Node):
@@ -45,12 +45,10 @@ class WaterProcessor(Node):
         # Flow rates
         self.intake_rate = p('intake_flow_ml_s', 20.0).value
         self.filter_rate = p('filter_flow_ml_s', 5.0).value
-        self.column_drain_rate = p('column_drain_ml_s', 4.0).value
+        self.transfer_rate = p('transfer_flow_ml_s', 8.0).value    # transfer pump column -> Stage 3
         self.delivery_rate = p('delivery_flow_ml_s', 25.0).value
-        self.alum_rate = p('alum_pump_ml_s', 1.0).value          # Issue #3: 2 s = 2 mL
         self.chlorine_rate = p('chlorine_pump_ml_s', 1.0).value
         # Dosing ratios (stock solutions, see docs/HARDWARE.md)
-        self.alum_ml_per_l = p('alum_ml_per_litre', 3.0).value         # 1 % alum stock -> ~30 mg/L
         self.chlorine_ml_per_l = p('chlorine_ml_per_litre', 3.0).value  # 0.07 % NaOCl stock (bleach 1:50) -> ~2 mg/L
         self.max_dose_ml = p('max_single_dose_ml', 4.0).value
         # Safety
@@ -63,7 +61,6 @@ class WaterProcessor(Node):
         self.arm_deployed_rad = math.radians(p('arm_deployed_deg', 80.0).value)   # intake boom counts as lowered
         # Where water is reachable: rover x >= river_min_x (bank of v2_village is at x=10)
         self.river_min_x = p('river_min_x', 9.3).value
-        self.alum_stock = p('alum_stock_ml', 250.0).value
         self.chlorine_stock = p('chlorine_stock_ml', 250.0).value
         self.rate_hz = p('update_rate_hz', 10.0).value
 
@@ -72,10 +69,10 @@ class WaterProcessor(Node):
         self.column_ml = 0.0
         self.clean_ml = 0.0
         self.relay = [False, False, False, False]
-        self.alum_left_ml = 0.0
+        self.transfer_left_ml = 0.0
         self.chlorine_left_ml = 0.0
         self.deliver_left_ml = 0.0
-        self.alum_total_ml = 0.0
+        self.transfer_total_ml = 0.0
         self.chlorine_total_ml = 0.0
         self.delivered_total_ml = 0.0
         self.deliveries = 0
@@ -121,7 +118,7 @@ class WaterProcessor(Node):
     def _on_cmd(self, msg):
         """Commands (case-insensitive):
             intake:start | intake:stop
-            dose_alum[:ml]      (no ml -> auto dose for the raw-tank volume)
+            transfer[:ml]       (no ml -> move what is in the column) | transfer:stop
             dose_chlorine[:ml]  (no ml -> auto dose for the clean-tank volume)
             deliver:ml | deliver:stop
             stop | reset
@@ -153,10 +150,16 @@ class WaterProcessor(Node):
             else:
                 self.intake_requested = False
                 self._event('intake stop')
-        elif name == 'dose_alum':
-            ml = self._dose_amount(arg, self.raw_ml, self.alum_ml_per_l)
-            self.alum_left_ml = min(ml, self.alum_stock)
-            self._event(f'alum dose {self.alum_left_ml:.2f} mL')
+        elif name == 'transfer':
+            if arg == 'stop':
+                self.transfer_left_ml = 0.0
+                self._event('transfer stop')
+            else:
+                try:
+                    self.transfer_left_ml = max(0.0, float(arg))
+                except ValueError:
+                    self.transfer_left_ml = self.column_ml
+                self._event(f'transfer {self.transfer_left_ml:.0f} mL column -> delivery tank')
         elif name == 'dose_chlorine':
             ml = self._dose_amount(arg, self.clean_ml, self.chlorine_ml_per_l)
             self.chlorine_left_ml = min(ml, self.chlorine_stock)
@@ -231,24 +234,21 @@ class WaterProcessor(Node):
                     self._event('dry-run protection: no water at intake')
         self.relay[0] = want_intake
 
-        # ---- CH2 alum dosing into Stage 1 (Issue #3) ----
-        self.relay[1] = self.alum_left_ml > 1e-6
-        if self.relay[1]:
-            d = min(self.alum_rate * dt, self.alum_left_ml)
-            self.alum_left_ml -= d
-            self.alum_total_ml += d
-            self.alum_stock -= d
-            self.raw_ml = min(self.raw_cap, self.raw_ml + d)
-
-        # ---- Stage 2 gravity filtration S1 -> column -> S3 (Issue #5) ----
+        # ---- Stage 2 gravity filtration S1 -> column (Issue #5) ----
         if self.raw_ml > 0 and not self.overflow_latch:
             f = min(self.filter_rate * dt, self.raw_ml, self.column_cap - self.column_ml)
             self.raw_ml -= f
             self.column_ml += f
-        if self.column_ml > 0 and clean_pct < 100.0:
-            f = min(self.column_drain_rate * dt, self.column_ml, self.clean_cap - self.clean_ml)
-            self.column_ml -= f
-            self.clean_ml += f
+
+        # ---- CH2 transfer pump: column -> Stage 3 delivery tank ----
+        self.relay[1] = self.transfer_left_ml > 1e-6
+        if self.relay[1]:
+            d = min(self.transfer_rate * dt, self.transfer_left_ml)
+            self.transfer_left_ml -= d
+            self.transfer_total_ml += d
+            moved = min(d, self.column_ml, self.clean_cap - self.clean_ml)   # pump runs dry if the estimate was high
+            self.column_ml -= moved
+            self.clean_ml += moved
 
         # ---- CH3 chlorine dosing into Stage 3 (Issue #3) ----
         self.relay[2] = self.chlorine_left_ml > 1e-6
@@ -276,7 +276,7 @@ class WaterProcessor(Node):
 
     def _all_off(self):
         self.intake_requested = False
-        self.alum_left_ml = self.chlorine_left_ml = self.deliver_left_ml = 0.0
+        self.transfer_left_ml = self.chlorine_left_ml = self.deliver_left_ml = 0.0
         self.relay = [False, False, False, False]
 
     def _health(self):
@@ -308,11 +308,11 @@ class WaterProcessor(Node):
             's3': round(100.0 * self.clean_ml / self.clean_cap, 1),
             'relays': dict(zip(RELAY_NAMES, self.relay)),
             'intake': self.relay[0],
+            'intake_requested': self.intake_requested,
             'busy': busy,
             'filtering': filtering,
-            'alum_total_ml': round(self.alum_total_ml, 2),
+            'transfer_total_ml': round(self.transfer_total_ml, 1),
             'chlorine_total_ml': round(self.chlorine_total_ml, 2),
-            'alum_stock_ml': round(self.alum_stock, 1),
             'chlorine_stock_ml': round(self.chlorine_stock, 1),
             'delivered_total_ml': round(self.delivered_total_ml, 1),
             'deliveries': self.deliveries,

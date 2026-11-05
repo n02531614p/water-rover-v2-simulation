@@ -1,5 +1,5 @@
 {
-  "description": "Issue #3 peristaltic dosing pump (alum or chlorine): DOSE injects ML millilitres by running the pump for ML / RATE seconds (2 s = 2 mL at 1 mL/s). Only real relay-ON time (RON) counts. TOT = total injected mL for the dashboard.",
+  "description": "Issue #3 volumetric pump: the chlorine dosing pump, and also the TRANSFER pump (column -> delivery tank, RATE ~8). DOSE moves ML millilitres by running the pump for ML / RATE seconds (2 s = 2 mL at 1 mL/s). Only real relay-ON time (RON) counts. TOT = total injected mL for the dashboard.",
   "nodes": [
     {
       "id": "in00",

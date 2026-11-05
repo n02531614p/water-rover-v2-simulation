@@ -205,7 +205,7 @@ def relays():
     s = Sheet(1000, 840, 'Relays: ESP32 to two 2-channel relay boards to four pumps')
     esp = s.box(30, 160, 170, 250, 'ESP32', '', right=['3V3', 'GND', 'GPIO23', 'GPIO19', 'GPIO18', 'GPIO4'],
                 start=210, pitch=34)
-    boards = [('A', 70, [('CH1', 'INTAKE PUMP', '#1'), ('CH2', 'ALUM PUMP', '#3')]),
+    boards = [('A', 70, [('CH1', 'INTAKE PUMP', '#1'), ('CH2', 'TRANSFER PUMP', '#5')]),
               ('B', 430, [('CH3', 'CHLORINE PUMP', '#3'), ('CH4', 'DELIVERY PUMP', '#8')])]
     pins = {}
     for name, by, chans in boards:
@@ -245,7 +245,7 @@ def relays():
             s.wire([(755, y + 76), (755, y + 84), (940, y + 84), (940, py + 46)], 'wg'); s.dot(940, py + 46)
     s.cross(40, 640, 'BOTH boards: remove the JD-VCC jumper')
     lines = ['JD-VCC (+ the GND beside it) to the 5 V rail,', 'VCC to ESP32 3V3: the 3.3 V GPIOs then',
-             'drive the opto-couplers.', '', 'Board A: IN1 = CH1 intake, IN2 = CH2 alum.',
+             'drive the opto-couplers.', '', 'Board A: IN1 = CH1 intake, IN2 = CH2 transfer.',
              'Board B: IN1 = CH3 chlorine, IN2 = CH4 delivery.', '',
              'Flyback diode across each pump, stripe to +.', 'Use the NO and COM screws; leave NC empty.']
     for i, t in enumerate(lines):
@@ -300,7 +300,7 @@ SHEETS = [('power', power, 'Power distribution',
            'The four TT motors run in pairs: both left motors in parallel on OUT1/OUT2, both right motors on '
            'OUT3/OUT4. ENA and ENB carry PWM from the ESP32, IN1-IN4 set direction.'),
           ('relays', relays, 'Relays and pumps (#1 #3 #8 #10)',
-           'Two 2-channel relay boards give the four channels: board A runs the intake and alum pumps, board B the '
+           'Two 2-channel relay boards give the four channels: board A runs the intake and transfer pumps, board B the '
            'chlorine and delivery pumps. Each relay passes the 5 V rail from COM to NO and on to its pump; the pump '
            'returns to ground. The relays never switch the motors.'),
           ('sensors', sensors, 'Servo, flow sensor, battery sense (#5 #6 #10)',
@@ -375,7 +375,7 @@ code{font:12.5px var(--fm);background:var(--chip);padding:1px 5px;border-radius:
 
 PINS = [('14', 'L298N ENA (left PWM)', '--pwm'), ('27 / 26', 'L298N IN1 / IN2 (left direction)', '--dir'),
         ('25 / 33', 'L298N IN3 / IN4 (right direction)', '--dir'), ('32', 'L298N ENB (right PWM)', '--pwm'),
-        ('23', 'Relay board A IN1 - intake pump', '--rly'), ('19', 'Relay board A IN2 - alum pump', '--rly'),
+        ('23', 'Relay board A IN1 - intake pump', '--rly'), ('19', 'Relay board A IN2 - transfer pump (column to delivery tank)', '--rly'),
         ('18', 'Relay board B IN1 - chlorine pump', '--rly'), ('4', 'Relay board B IN2 - delivery pump', '--rly'),
         ('13', 'SG90 signal (orange)', '--srv'), ('34', 'Flow sensor pulse via 10k / 20k', '--flw'),
         ('39 (VN)', '5 V rail sense, 10k / 10k divider', '--ana'), ('3V3', 'VCC of both relay boards', '--v33'),
@@ -392,7 +392,7 @@ CHECK = ['Power bank off. Wire every GND to one common bus first.',
          'Flow sensor yellow wire through the 10k / 20k divider to GPIO34, never straight in.',
          'ESP32 on its own USB output. Flash, open the Serial Monitor at 115200, check the boot line.',
          'Switch on the motor rail. Tap Forward on the dashboard: both sides must turn forward.',
-         'Run each pump from the dashboard (intake, dose alum 1 mL, dose chlorine 0.5 mL, deliver 50 mL).']
+         'Run each pump from the dashboard (intake, transfer, dose chlorine 0.5 mL, deliver 50 mL).']
 
 
 def page():

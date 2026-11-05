@@ -60,7 +60,7 @@ struct FlowMeter {
 struct VolumeModel {
   float rawCapMl = 400, clampColumnMl = 100, cleanCapMl = 400;   // 400 mL tanks (Nov 2026)
   float filterMlPerS = 3.0f;      // CALIBRATE: real sand/charcoal column throughput
-  float drainMlPerS  = 3.0f;      // column -> Stage 3
+  float drainMlPerS  = 0.0f;      // column -> Stage 3 by gravity; 0 = the TRANSFER PUMP moves it (current build)
   // state / outputs
   float rawMl = 0, columnMl = 0, cleanMl = 0;
   bool  started = false;
@@ -70,6 +70,12 @@ struct VolumeModel {
   void addClean(float ml) { cleanMl += ml; if (cleanMl > cleanCapMl) cleanMl = cleanCapMl; }
   void removeClean(float ml) { cleanMl -= ml; if (cleanMl < 0) cleanMl = 0; }
   void reset(float raw = 0, float clean = 0) { rawMl = raw; columnMl = 0; cleanMl = clean; }
+  // transfer pump (relay CH2): filtered water from the column into the Stage 3 delivery tank
+  void moveColumnToClean(float ml) {
+    if (ml > columnMl) ml = columnMl;
+    if (ml > cleanCapMl - cleanMl) ml = cleanCapMl - cleanMl;
+    if (ml > 0) { columnMl -= ml; cleanMl += ml; }
+  }
 
   void tick(uint32_t now) {
     float dt = started ? nc_since(now, last) / 1000.0f : 0;
@@ -216,19 +222,21 @@ struct RouteNavigator {
 
 node {
     VolumeModel v;
-    Number li = 0, la = 0, lc = 0, lo = 0;
+    Number li = 0, lt = 0, lc = 0, lo = 0;
     bool first = true;
     void evaluate(Context ctx) {
-        Number i = getValue<input_IN>(ctx), a = getValue<input_AL>(ctx), c = getValue<input_CL>(ctx), o = getValue<input_OUT>(ctx);
-        if (first || isInputDirty<input_RST>(ctx)) { v.reset(); li = i; la = a; lc = c; lo = o; first = false; }
-        v.filterMlPerS = v.drainMlPerS = getValue<input_FILT>(ctx);
-        v.addRaw(i - li + a - la); v.addClean(c - lc); v.removeClean(o - lo);
-        li = i; la = a; lc = c; lo = o;
+        Number i = getValue<input_IN>(ctx), tr = getValue<input_TR>(ctx), c = getValue<input_CL>(ctx), o = getValue<input_OUT>(ctx);
+        if (first || isInputDirty<input_RST>(ctx)) { v.reset(); li = i; lt = tr; lc = c; lo = o; first = false; }
+        v.filterMlPerS = getValue<input_FILT>(ctx);
+        v.drainMlPerS = 0;
+        v.addRaw(i - li); v.moveColumnToClean(tr - lt); v.addClean(c - lc); v.removeClean(o - lo);
+        li = i; lt = tr; lc = c; lo = o;
         v.tick(millis());
         emitValue<output_S1>(ctx, v.rawPct());
         emitValue<output_S2>(ctx, v.columnPct());
         emitValue<output_S3>(ctx, v.cleanPct());
         emitValue<output_CML>(ctx, v.cleanMl);
+        emitValue<output_COL>(ctx, v.columnMl);
         emitValue<output_FLTR>(ctx, v.filtering());
         setTimeout(ctx, 100);
     }

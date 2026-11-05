@@ -10,13 +10,15 @@ therefore works the same against the real rover and the simulation. Status paylo
 |-------|------------------|---------|-------|
 | `rover/estop` | in + out, **retained** | `1` = E-STOP (all pumps + motors off, arm frozen), `0` = release | #12 |
 | `rover/online` | out, retained (last-will `0`) | `1` / `0` | #12 |
-| `rover/telemetry` | out, 1 Hz | full frame: state, state_id, battery_v, s1/s2/s3, relays, arm, drive, alum_ml, chlorine_ml, delivered_ml, health, power, rssi | #12 |
+| `rover/telemetry` | out, 1 Hz | full frame: state, state_id, battery_v, s1/s2/s3, relays, arm, drive, transfer_ml, chlorine_ml, delivered_ml, health, power, rssi | #12 |
 | `rover/state` | out, 1 Hz | `{"state":"STATE_PUMPING","state_id":2,"battery_v":5.02}` | #11 |
 | `rover/mission/cmd` | in | `start` `pause` `resume` `abort` `arrived_river` `arrived_home` `arrived_depot` | #11 |
 | `rover/intake/status` | out | `{"pump":true,"state":"PUMPING","level_pct":42,"run_s":12.3,"flow_ml_s":21.5,"batch_ml":210,"target_ml":380,"total_ml":590,"fault":""}` (flow sensor) | #1 |
 | `rover/intake/cmd` | in | `start` (also lowers the intake) `stop` `reset` (clears DRY_RUN / TIMEOUT) | #1 |
-| `rover/dosing/status` | out | `{"alum_on":false,"chlorine_on":true,"alum_total_ml":3.0,"chlorine_total_ml":0.6,"alum_stock_ml":247,...}` | #3 |
-| `rover/dosing/cmd` | in | `{"pump":"alum","ml":3}` · `{"pump":"chlorine","ml":0.6}` · `stop` · `refill alum` | #3 |
+| `rover/dosing/status` | out | `{"chlorine_on":true,"chlorine_total_ml":1.1,"chlorine_stock_ml":248,"chlorine_last_ml":1.1}` | #3 |
+| `rover/transfer/status` | out | `{"pump":true,"total_ml":120,"column_ml":35,"clean_ml":85}` (column → delivery tank) | #5 |
+| `rover/dosing/cmd` | in | `{"pump":"chlorine","ml":1.1}` · `stop` · `refill` | #3 |
+| `rover/transfer/cmd` | in | `run` (move what is in the column) · `{"ml":100}` · `stop` | #5 |
 | `rover/filtration/status` | out | `{"s1":40,"s2":20,"s3":10,"intake":true,"flow":0.02,"health":"HEALTHY"}` | #5 |
 | `rover/filtration/cmd` | in | `pause` · `resume` · `auto` | #5 |
 | `rover/arm/status` | out | `{"angle":90,"target":90,"moving":false,"deployed":true,"stowed":false}` | #6 |
@@ -51,7 +53,7 @@ Mission state ids: `0 IDLE · 1 NAV_RIVER · 2 INTAKE_DOSE · 3 NAV_HOMESTEAD ·
 | `/arm_servo/cmd_pos` | std_msgs/Float64 (rad) | arm_controller → Gazebo JointPositionController |
 | `/waterdroid/mission_state` | std_msgs/String (JSON) | mission_navigator(_gt) |
 | `/waterdroid/mission/cmd` | std_msgs/String | `start` `pause` `resume` `abort` |
-| `/waterdroid/cmd` | std_msgs/String | `intake:start` `intake:stop` `dose_alum[:ml]` `dose_chlorine[:ml]` `deliver:ml` `stop` `reset` |
+| `/waterdroid/cmd` | std_msgs/String | `intake:start` `intake:stop` `transfer[:ml]` `dose_chlorine[:ml]` `deliver:ml` `stop` `reset` |
 | `/waterdroid/process_state` | std_msgs/String (JSON) | water_processor: tank volumes, relays, totals, health |
 | `/waterdroid/arm/cmd`, `/waterdroid/arm/state` | std_msgs/String | `EXTEND` `RETRACT` `ANGLE:n` / JSON |
 | `/waterdroid/estop` | std_msgs/Bool | dashboard → everything |

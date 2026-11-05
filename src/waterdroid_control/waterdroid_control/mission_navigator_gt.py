@@ -9,7 +9,8 @@ x=10, offload bays at (6,3), (6,-3) and (-3,-3)).
 
 Mission (state names are the Master System State shown on the Node-RED dashboard):
   STATE_EN_ROUTE_RIVER      drive east to the river bank
-  STATE_PUMPING             servo lowers the intake, pump fills Stage 1 + alum, intake raised
+  STATE_PUMPING             servo lowers the intake, pump fills Stage 1, intake raised
+  STATE_FILTERING           gravity filter; transfer pump moves the column water to the delivery tank
   STATE_FILTERING           wait for the gravity column to pass the batch to Stage 3
   STATE_DOSING_CHLORINE     chlorine into Stage 3 + contact time
   STATE_EN_ROUTE_HOMESTEAD  reverse off the bank, pivot, drive to each bay
@@ -56,7 +57,7 @@ class MissionNavigator(Node):
         self.pump_timeout = p('pump_timeout_s', 120.0).value
         self.filter_timeout = p('filter_timeout_s', 300.0).value
         self.contact_s = p('chlorine_contact_s', 5.0).value
-        self.alum_ml_per_l = p('alum_ml_per_litre', 3.0).value
+        self.transfer_min_ml = p('transfer_min_ml', 20.0).value
         self.raw_cap_ml = p('raw_tank_capacity_ml', 380.0).value   # batch per trip
         self.action_timeout = p('action_timeout_s', 60.0).value
         # 'ground_truth' = perfect pose from Gazebo; 'dead_reckoning' = like the real rover
@@ -281,7 +282,7 @@ class MissionNavigator(Node):
             self.get_logger().info(f'Arrived at river bank x={self.pose_x:.2f}' + self._drift_note())
             self._goto('PUMP')
 
-    # 2. lower the servo intake boom, pump + in-line alum dose, raise the boom (never while driving)
+    # 2. lower the servo intake boom, pump the batch, raise the boom (never while driving)
     def _phase_pump(self):
         self.stop()
         self._set_state('STATE_PUMPING')
@@ -290,12 +291,11 @@ class MissionNavigator(Node):
             self.arm_pub.publish(String(data='EXTEND'))
             self.sub, self.t0 = 1, self.now()
         elif self.sub == 1 and (self.arm.get('deployed') or timed_out):
-            alum_ml = self.raw_cap_ml / 1000.0 * self.alum_ml_per_l
             self.proc_pub.publish(String(data='intake:start'))
-            self.proc_pub.publish(String(data=f'dose_alum:{alum_ml:.2f}'))
             self.sub, self.t0 = 2, self.now()
         elif self.sub == 2 and self._elapsed() > 1.0:
-            done = not self.proc.get('intake', False) and self._proc_idle('alum_pump')
+            self._maybe_transfer(final=False)          # keep the small column from overflowing
+            done = not self.proc.get('intake_requested', self.proc.get('intake', False))
             if done or self._elapsed() > self.pump_timeout:
                 if self.proc.get('fault'):
                     self.get_logger().warn(f"intake ended with fault {self.proc.get('fault')}")
@@ -304,13 +304,34 @@ class MissionNavigator(Node):
         elif self.sub == 3 and (self.arm.get('stowed') or timed_out):
             self._goto('FILTER')
 
-    # 3. wait for the gravity column to pass the batch to Stage 3
+    # 3. gravity Stage 1 -> column; transfer pump column -> delivery tank whenever water collects
     def _phase_filter(self):
         self.stop()
         self._set_state('STATE_FILTERING')
-        if self._elapsed() > 1.0 and (not self.proc.get('filtering', True)
-                                      or self._elapsed() > self.filter_timeout):
+        if self._elapsed() > self.filter_timeout:
             self._goto('CHLORINATE')
+            return
+        if self._elapsed() < 1.0:
+            return
+        if not self._maybe_transfer(final=True) and self._transfer_settled():
+            if self.proc.get('s1_ml', 0.0) <= 1.0 and self.proc.get('s2_ml', 0.0) <= 2.0:
+                self._goto('CHLORINATE')
+
+    def _transfer_settled(self):
+        # process_state arrives at 5 Hz: give a new transfer time to show up before deciding again
+        return self._proc_idle('transfer_pump') and self.now() - getattr(self, 't_transfer', -10.0) > 1.0
+
+    def _maybe_transfer(self, final):
+        """Start the transfer pump (column -> delivery tank) when enough has collected."""
+        if not self._transfer_settled():
+            return True
+        column = self.proc.get('s2_ml', 0.0)
+        raw_empty = self.proc.get('s1_ml', 0.0) <= 1.0
+        if column >= self.transfer_min_ml or (final and raw_empty and column > 2.0):
+            self.proc_pub.publish(String(data=f'transfer:{int(column + 0.5)}'))
+            self.t_transfer = self.now()
+            return True
+        return False
 
     # 4. chlorine into Stage 3 + contact time
     def _phase_chlorinate(self):

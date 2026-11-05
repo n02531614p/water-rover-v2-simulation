@@ -91,7 +91,8 @@ struct IntakeController {
 };
 
 // ---------------------------------------------------------------------------
-// Issue #3 - Chemical dosing (alum -> Stage 1, chlorine -> Stage 3)
+// Issue #3 - Chemical dosing (chlorine -> Stage 3). Also used as the volumetric TRANSFER pump
+//   (column -> delivery tank): same maths, volume = rate x relay-ON time.
 //   Peristaltic pumps are volumetric: volume = rate x ON-time (2 s = 2 mL at
 //   1 mL/s). ON-time is only counted while the relay is really closed.
 // ---------------------------------------------------------------------------

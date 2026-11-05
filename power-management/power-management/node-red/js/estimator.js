@@ -6,7 +6,7 @@ const EFFICIENCY   = 0.65;      // usable fraction at 5 V after boost-converter 
 const I_ACTIVE_BASE = 260;      // mA: ESP32 (Wi-Fi, 240 MHz) + relay board idle
 const I_SLEEP_BASE  = 110;      // mA: ESP32 at 80 MHz, loads off
 const I_RELAY_COIL  = 70;       // mA per energised relay coil
-const I_CH = [350, 150, 150, 350];   // mA per relay load while running: intake, alum, chlorine, delivery pump
+const I_CH = [350, 350, 150, 350];   // mA per relay load while running: intake, transfer, chlorine, delivery pump
 const I_DRIVE = 0;              // the TT motors are on the L298N, not the relays: add their draw from rover/drive/status if needed
 
 let used = context.get('used') || 0;
