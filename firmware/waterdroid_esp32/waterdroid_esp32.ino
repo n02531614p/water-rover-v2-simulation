@@ -77,6 +77,7 @@ DosingPump         transfer, chlorine;   // transfer = column -> delivery tank (
 DeliveryController delivery;
 FiltrationMonitor  filt;
 ServoArm           arm;
+PumpTest           ptest;              // bench test mode: rover/test/cmd "intake 10"
 DriveController    drive;
 MissionCore        mission;
 FlowMeter          flow;
@@ -119,7 +120,7 @@ void setEstop(bool on, const char* src) {
   arm.freeze(on);
   if (on) {
     seq.setMode(PM_EMERGENCY, now);
-    intake.stop(); transfer.abort(); chlorine.abort(); delivery.abort("e-stop");
+    intake.stop(); transfer.abort(); chlorine.abort(); delivery.abort("e-stop"); ptest.stopAll();
     drive.stopNow();
   } else {
     seq.reset(now);                  // -> SLEEP; operator returns to ACTIVE on purpose
@@ -165,6 +166,24 @@ float jsonNumber(const String& s, const char* key, float def) {
   return c < 0 ? def : s.substring(c + 1).toFloat();
 }
 
+// Bench test: "<pump> <seconds>" e.g. "intake 10", "delivery 5"; "stop" ends every test run.
+// Ignores the flow sensor / tank estimates; the e-stop, the brownout guard and the
+// intake-lowered interlock still apply (an intake test lowers the intake first).
+void testCommand(const String& c) {
+  uint32_t now = millis();
+  if (c == "stop" || c == "off") { ptest.stopAll(); return; }
+  if (estop) return;
+  int sp = c.indexOf(' ');
+  String name = sp < 0 ? c : c.substring(0, sp);
+  float secs = sp < 0 ? 5.0f : c.substring(sp + 1).toFloat();
+  int ch = name == "intake" ? CH_INTAKE : name == "transfer" ? CH_TRANSFER :
+           (name == "chlorine" || name == "dosing") ? CH_CHLORINE : (name == "delivery" || name == "outlet") ? CH_DELIVERY : -1;
+  if (ch < 0) return;
+  if (ch == CH_INTAKE) arm.command("EXTEND");
+  if (ptest.start((uint8_t)ch, secs, now))
+    Serial.printf("{\"event\":\"test\",\"pump\":\"%s\",\"s\":%.1f}\n", RELAY_NAME[ch], secs);
+}
+
 void onMqtt(char* topic, byte* payload, unsigned int len) {
   String t(topic), m;
   for (unsigned i = 0; i < len; i++) m += (char)payload[i];
@@ -197,6 +216,7 @@ void onMqtt(char* topic, byte* payload, unsigned int len) {
     else transfer.start(lm.startsWith("{") ? jsonNumber(lm, "ml", 0) : vol.columnMl);
   }
   else if (t == "rover/arm/cmd") arm.command(m.c_str());
+  else if (t == "rover/test/cmd") testCommand(lm);
   else if (t == "rover/delivery/cmd") {
     if (lm == "stop") delivery.abort("operator");
     else delivery.request(jsonNumber(lm, "ml", 250));
@@ -219,6 +239,7 @@ void onSerialLine(String l) {
     return;
   }
   l.toLowerCase();
+  if (l.startsWith("test ")) { testCommand(l.substring(5)); return; }
   if (l == "estop") setEstop(true, "serial");
   else if (l == "reset") setEstop(false, "serial");
   else if (l.startsWith("extend") || l.startsWith("retract") || l.startsWith("angle:")) arm.command(l.c_str());
@@ -281,6 +302,11 @@ void controlStep() {
   seq.setWant(CH_TRANSFER, transfer.want);
   seq.setWant(CH_CHLORINE, chlorine.want);
   seq.setWant(CH_DELIVERY, delivery.want);
+  for (uint8_t i = 0; i < PC_CHANNELS; i++) {        // bench test mode overrides the want (not the safety)
+    bool w = ptest.tick(i, seq.on[i], now);
+    if (i == CH_INTAKE && !arm.deployed()) w = false; // intake only with the boom lowered
+    if (w && !estop) seq.setWant(i, true);
+  }
   seq.tick(now, railV, railValid);
   for (uint8_t i = 0; i < PC_CHANNELS; i++) digitalWrite(RELAY_PIN[i], seq.pinLevel(i, RELAY_ACTIVE_LOW));
 
@@ -393,6 +419,12 @@ void publishAll() {
     transfer.totalMl, chlorine.totalMl, delivery.totalMl, FiltrationMonitor::name(filt.health),
     PowerSequencer::modeName(seq.mode), WiFi.RSSI());
   mqtt.publish("rover/telemetry", js);
+
+  uint32_t now = millis();
+  snprintf(js, sizeof(js), "{\"active\":[%d,%d,%d,%d],\"left_s\":[%.1f,%.1f,%.1f,%.1f]}",
+    ptest.active[0], ptest.active[1], ptest.active[2], ptest.active[3],
+    ptest.remainingS(0, now), ptest.remainingS(1, now), ptest.remainingS(2, now), ptest.remainingS(3, now));
+  mqtt.publish("rover/test/status", js);
 }
 
 bool wifiConfigured() { return strcmp(WIFI_SSID, "YOUR_WIFI") != 0 && WIFI_SSID[0] != 0; }
@@ -408,7 +440,8 @@ void serviceNetwork(uint32_t now) {
   if (!mqtt.connected() && mqtt.connect(MQTT_CLIENT, nullptr, nullptr, "rover/online", 0, true, "0")) {
     const char* subs[] = {"rover/estop", "rover/mission/cmd", "rover/power/cmd", "rover/intake/cmd",
                           "rover/filtration/cmd", "rover/dosing/cmd", "rover/arm/cmd",
-                          "rover/delivery/cmd", "rover/drive/cmd", "rover/nav/cmd", "rover/transfer/cmd"};
+                          "rover/delivery/cmd", "rover/drive/cmd", "rover/nav/cmd", "rover/transfer/cmd",
+                          "rover/test/cmd"};
     for (const char* s : subs) mqtt.subscribe(s);
     mqtt.publish("rover/online", "1", true);
   }

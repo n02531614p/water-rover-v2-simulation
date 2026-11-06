@@ -366,8 +366,25 @@ static void run_cycle(float filterRate) {
          t / 1000.0, tr.totalMl, dl.totalMl, deliveries, cl.totalMl);
 }
 
+// ---------------- bench test mode ----------------
+static void test_pump_test() {
+  PumpTest pt;
+  CHECK(!pt.start(4, 5, 0));                      // bad channel
+  CHECK(!pt.start(0, 0, 0));                      // zero seconds
+  CHECK(pt.start(0, 10, 0));
+  CHECK(pt.tick(0, false, 100));                  // wants the relay, timer not started yet
+  CHECK(pt.remainingS(0, 100) > 9.9f);
+  CHECK(pt.tick(0, true, 2000));                  // relay came on at 2 s (servo was lowering)
+  CHECK(pt.tick(0, true, 11900));                 // still within 10 s of ON
+  CHECK(!pt.tick(0, true, 12000) && !pt.active[0]);  // 10 s after ON -> done
+  CHECK(pt.start(1, 99, 0) && pt.runMs[1] == 30000); // capped at 30 s
+  CHECK(!pt.tick(1, false, 15000) && !pt.active[1]); // relay never came on -> give up
+  CHECK(pt.start(3, 5, 0)); pt.stopAll(); CHECK(!pt.any());
+}
+
 int main() {
   test_intake(); test_dosing(); test_delivery(); test_filtration();
+  test_pump_test();
   test_arm(); test_drive(); test_power_relays(); test_mission();
   test_flow_volume(); test_route(); test_full_cycle();
   printf("%d checks, %d failed\n", checks, fails);

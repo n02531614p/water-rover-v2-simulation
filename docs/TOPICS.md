@@ -31,6 +31,8 @@ therefore works the same against the real rover and the simulation. Status paylo
 | `rover/drive/cmd` | in | `forward` `reverse` `left` `right` `stop` or `{"l":-255..255,"r":-255..255}`; 0.6 s dead-man | #9 |
 | `rover/power/status` | out | `{"mode":"ACTIVE","rail_v":5.02,"rail":"OK","ch":[1,0,0,0],"want":[1,0,0,0],"brownouts":0,...}` | #10 |
 | `rover/power/cmd` | in | `active` `sleep` `emergency` `reset` | #10 |
+| `rover/test/cmd` | in | bench test: `intake 10` · `transfer 5` · `chlorine 3` · `delivery 5` (seconds, max 30) · `stop`. Ignores the flow sensor and tank estimates; e-stop, brownout guard and the intake-lowered interlock still apply (an intake test lowers the intake first). Serial: `test intake 10` | bench |
+| `rover/test/status` | out, 1 Hz | `{"active":[1,0,0,0],"left_s":[6.5,0,0,0]}` (CH1 intake, CH2 transfer, CH3 chlorine, CH4 delivery) | bench |
 | `rover/power/req/1..4` | in | `1` / `0` (standalone `power_management.ino` only) | #10 |
 
 ### Serial bridge (Issue #11 flow `esp32_central_controller_serial_bridge.json`)

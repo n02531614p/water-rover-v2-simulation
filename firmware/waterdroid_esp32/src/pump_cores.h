@@ -201,4 +201,50 @@ struct DeliveryController {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Bench test mode: run one relay channel for a fixed number of seconds,
+// ignoring the flow sensor and the tank estimates. The power sequencer still
+// switches the relay (stagger + brownout guard), the caller still applies the
+// e-stop and the intake-lowered interlock. The timer starts when the relay is
+// actually ON, so waiting for the servo does not eat into the run time.
+// ---------------------------------------------------------------------------
+struct PumpTest {
+  static const uint8_t N = 4;
+  uint32_t maxMs = 30000;          // longest test run
+  uint32_t startTimeoutMs = 15000; // give up if the relay never comes on
+  uint32_t runMs[N]   = {0, 0, 0, 0};
+  uint32_t reqAt[N]   = {0, 0, 0, 0};
+  uint32_t onAt[N]    = {0, 0, 0, 0};
+  bool     active[N]  = {false, false, false, false};
+  bool     started[N] = {false, false, false, false};
+
+  bool start(uint8_t ch, float seconds, uint32_t now) {
+    if (ch >= N || !(seconds > 0)) return false;
+    uint32_t ms = (uint32_t)(seconds * 1000.0f);
+    if (ms > maxMs) ms = maxMs;
+    runMs[ch] = ms; reqAt[ch] = now; active[ch] = true; started[ch] = false;
+    return true;
+  }
+  void stop(uint8_t ch) { if (ch < N) active[ch] = started[ch] = false; }
+  void stopAll() { for (uint8_t i = 0; i < N; i++) stop(i); }
+  bool any() const { for (uint8_t i = 0; i < N; i++) if (active[i]) return true; return false; }
+
+  // relayOn = the sequencer's actual output for that channel. Returns the "want" for the channel.
+  bool tick(uint8_t ch, bool relayOn, uint32_t now) {
+    if (ch >= N || !active[ch]) return false;
+    if (!started[ch]) {
+      if (relayOn) { started[ch] = true; onAt[ch] = now; }
+      else if (pc_since(now, reqAt[ch]) >= startTimeoutMs) { stop(ch); return false; }
+    }
+    if (started[ch] && pc_since(now, onAt[ch]) >= runMs[ch]) { stop(ch); return false; }
+    return true;
+  }
+  float remainingS(uint8_t ch, uint32_t now) const {
+    if (ch >= N || !active[ch]) return 0;
+    if (!started[ch]) return runMs[ch] / 1000.0f;
+    uint32_t e = pc_since(now, onAt[ch]);
+    return e >= runMs[ch] ? 0 : (runMs[ch] - e) / 1000.0f;
+  }
+};
+
 #endif  // PUMP_CORES_H
