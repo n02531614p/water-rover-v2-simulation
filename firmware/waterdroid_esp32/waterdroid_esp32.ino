@@ -489,8 +489,9 @@ void loop() {
   }
   if (now - tSerial >= 1000) {                  // Node-RED serial bridge frame (Issue #11)
     tSerial = now;
-    Serial.printf("{\"state_id\":%u,\"state\":\"%s\",\"battery_v\":%.2f,\"estop\":%d}\n",
-                  mission.stateId(), MissionCore::name(mission.state), railV, estop);
+    Serial.printf("{\"state_id\":%u,\"state\":\"%s\",\"battery_v\":%.2f,\"estop\":%d,\"wifi\":%d,\"mqtt\":%d}\n",
+                  mission.stateId(), MissionCore::name(mission.state), railV, estop,
+                  WiFi.status() == WL_CONNECTED, mqtt.connected());
   }
 
   serviceNetwork(now);
