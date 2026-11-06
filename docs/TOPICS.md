@@ -22,7 +22,7 @@ therefore works the same against the real rover and the simulation. Status paylo
 | `rover/filtration/status` | out | `{"s1":40,"s2":20,"s3":10,"intake":true,"flow":0.02,"health":"HEALTHY"}` | #5 |
 | `rover/filtration/cmd` | in | `pause` · `resume` · `auto` | #5 |
 | `rover/arm/status` | out | `{"angle":90,"target":90,"moving":false,"deployed":true,"stowed":false}` | #6 |
-| `rover/arm/cmd` | in | servo **intake** arm: `EXTEND` (lower into the water) · `RETRACT` (raise) · `ANGLE:0-90` | #6 |
+| `rover/arm/cmd` | in | servo **intake** arm: `EXTEND` (lower into the water) · `RETRACT` (raise) · `ANGLE:0-45` | #6 |
 | `rover/nav/pose` | out | `{"x":6.0,"y":3.0,"yaw":3.14,"target":[6,3],"next":"HOME","phase":"DRIVE","leg_left":1.2,"point":2,"auto":true,"source":"dead_reckoning"}` | #7 |
 | `rover/nav/cmd` | in | `auto` (follow the fixed route) · `manual` (D-pad + Arrived buttons) · `reset` (pose = depot) · `calib_forward` · `calib_turn` | #7 |
 | `rover/delivery/status` | out | `{"pump":false,"state":"DONE","delivered_ml":317,"delivered_total_ml":951,"deliveries":3,"clean_ml":0}` | #8 |

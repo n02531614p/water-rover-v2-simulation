@@ -122,10 +122,11 @@ static void test_arm() {
   ServoArm a;
   CHECK(a.command("extend"));
   uint32_t t = 0; a.tick(t);
-  while (a.angle < 90 && t < 5000) a.tick(t += 20);
+  while (a.angle < ServoArm::DEPLOY && t < 5000) a.tick(t += 20);
   CHECK(a.deployed());
-  CHECK(a.angle == 90 && t >= 1700 && t <= 1900);              // 90 deg at 1 deg / 20 ms
-  CHECK(a.command("ANGLE:45"));
+  CHECK(a.angle == 45 && t >= 850 && t <= 950);                // 45 deg at 1 deg / 20 ms
+  CHECK(a.command("ANGLE:30"));
+  CHECK(!a.command("ANGLE:60"));                                // beyond the 45 deg range
   CHECK(!a.command("ANGLE:120"));
   CHECK(!a.command("ANGLE:4x"));
   CHECK(!a.command("ANGLE:"));

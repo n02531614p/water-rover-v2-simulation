@@ -246,14 +246,14 @@ mqtt_out('wd_arm_out', 'rover/arm/cmd', 'arm')
 button('wd_btn_ext', 'wd_g_arm', 'Lower intake', 'EXTEND', 'str', ['wd_arm_out'], 'arm', 1, width=3, icon='south')
 button('wd_btn_ret', 'wd_g_arm', 'Raise intake', 'RETRACT', 'str', ['wd_arm_out'], 'arm', 2, width=3,
        icon='north')
-slider('wd_arm_slider', 'wd_g_arm', 'Intake angle (0 raised - 90 in the water)', 0, 90, 3, 'arm', ['wd_arm_angle'])
-func('wd_arm_angle', 'ANGLE:n', "let a = Math.max(0, Math.min(90, Math.round(Number(msg.payload))));\n"
+slider('wd_arm_slider', 'wd_g_arm', 'Intake angle (0 raised - 45 in the water)', 0, 45, 3, 'arm', ['wd_arm_angle'])
+func('wd_arm_angle', 'ANGLE:n', "let a = Math.max(0, Math.min(45, Math.round(Number(msg.payload))));\n"
      "if (!Number.isFinite(a)) return null;\nmsg.payload = 'ANGLE:' + a;\nreturn msg;", 1, [['wd_arm_out']], 'arm')
 mqtt_in('wd_arm_in', 'rover/arm/status', ['wd_arm_fmt'], 'arm')
 func('wd_arm_fmt', 'Arm status', "const s = msg.payload || {};\n"
      "return [{payload: Number(s.angle||0)}, {payload: s.deployed ? 'IN THE WATER' : (s.stowed ? 'RAISED (safe to drive)' : (s.moving ? 'MOVING' : 'HOLD'))}];",
      2, [['wd_arm_gauge'], ['wd_arm_txt']], 'arm')
-gauge('wd_arm_gauge', 'wd_g_arm', 'Intake angle', 'deg', 0, 90, 4, 'arm', seg=('30', '80'),
+gauge('wd_arm_gauge', 'wd_g_arm', 'Intake angle', 'deg', 0, 45, 4, 'arm', seg=('15', '40'),
       colors=['#7f8c8d', '#e6a23c', '#2ecc71'])
 text('wd_arm_txt', 'wd_g_arm', 'Intake', 5, 'arm', width=3)
 

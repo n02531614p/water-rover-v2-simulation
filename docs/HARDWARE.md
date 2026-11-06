@@ -20,7 +20,7 @@ uses the numbers on this page.
 | 1 | Stage 3 transparent disinfection & clean tank (max 400 mL) | #3, #8 | |
 | 1 | 5 V chlorine dosing pump | #3 | relay CH3 |
 | 1 | 5 V delivery pump | #8 | relay CH4 |
-| 1 | SG90 servo on the **intake** boom (hose + pre-filter + pump) | #6 | 0° raised, 90° in the water |
+| 1 | SG90 servo on the **intake** boom (hose + pre-filter + pump) | #6 | 0° raised (start point at power-up), 45° in the water |
 | 1 | Fixed delivery nozzle | #8 | container goes under it |
 | 1 | Water-flow sensor **YF-S401** (hall turbine, 0.3-6 L/min, ~5880 pulses/L) | #1, #5 | on the intake line — measures the batch and detects dry-running |
 
@@ -142,7 +142,7 @@ Full wiring diagrams: `docs/wiring/power.svg`, `drive.svg`, `relays.svg`, `senso
 | Transfer pump rate (mL/s) | `TRANSFER_ML_PER_S` | time how long it takes to move 200 mL |
 | Delivery pump flow (mL/s) | `delivery.flowMlPerS` | time filling a 500 mL jug |
 | 5 V rail reading | `VCAL` | multimeter reading ÷ sketch reading |
-| Servo end stops | `servo.attach(PIN_SERVO, 500, 2400)` | adjust if the SG90 buzzes at 0° or 90° |
+| Servo end stops | `servo.attach(PIN_SERVO, 500, 2400)` | adjust if the SG90 buzzes at 0° or 45° |
 
 ## Treatment chemistry used for the dose numbers (Issue #3)
 

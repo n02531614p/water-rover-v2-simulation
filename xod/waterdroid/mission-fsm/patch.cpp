@@ -25,7 +25,7 @@ enum MissionState : uint8_t {
 };
 
 struct MissionInputs {
-  bool  intakeBusy = false;     // IntakeController.want or PUMPING
+  bool  intakeBusy = false;     // batch not finished: intake requested (pumping OR paused by the column guard)
   bool  transferBusy = false, chlorineBusy = false;
   float s1Pct = 0, s2Pct = 0;   // filtration levels
   float columnMl = 0;           // filtered water waiting in the column (estimate)
@@ -91,6 +91,8 @@ struct MissionCore {
         else if (sub == 1 && (in.armDeployed || el > cfg.actionTimeoutMs)) {
           act.startIntake = true;
           sub = 2; t0 = now;
+        } else if (sub == 2 && !in.transferBusy && in.columnMl >= cfg.transferMinMl) {
+          act.transferMl = in.columnMl;      // keep the small column from overflowing while the intake runs
         } else if (sub == 2 && el > 1000 && (!in.intakeBusy || el > cfg.pumpTimeoutMs)) {
           act.armRetract = true; sub = 3; t0 = now;
         } else if (sub == 3 && (in.armStowed || el > cfg.actionTimeoutMs)) {

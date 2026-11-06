@@ -135,10 +135,10 @@ node {
 
 # ----------------------------------------------------------------- Issue #6
 NODES['servo-arm'] = dict(
-    desc='Issue #6 SG90 servo INTAKE boom with smooth interpolation (1 deg / 20 ms). Raised = 0 deg, in the water = 90 deg. '
+    desc='Issue #6 SG90 servo INTAKE boom with smooth interpolation (1 deg / 20 ms). Raised = 0 deg (start point), in the water = 45 deg. '
          'Connect VAL (0-1 = 0-180 deg) to xod-dev/servo/rotate-servo (or ANG in degrees). '
          'FRZ = e-stop: hold position. DEP -> mission DEP and NOT DEP -> intake BLK; NOT STW -> drive INH.',
-    inputs=[('EXT', 'p', None, 'Lower intake'), ('RET', 'p', None, 'Raise intake'), ('ANG', 'n', '45', 'slider 0-90'),
+    inputs=[('EXT', 'p', None, 'Lower intake'), ('RET', 'p', None, 'Raise intake'), ('ANG', 'n', '20', 'slider 0-45'),
             ('SET', 'p', None, 'go to ANG'), ('FRZ', 'b', 'False')],
     outputs=[('ANGO', 'n', 'current angle deg'), ('VAL', 'n', 'servo value 0-1'), ('DEP', 'b'), ('STW', 'b')],
     cpp=core('motion_cores.h') + '''
