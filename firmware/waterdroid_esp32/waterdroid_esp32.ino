@@ -83,7 +83,7 @@ FlowMeter          flow;
 VolumeModel        vol;
 RouteNavigator     nav;
 volatile uint32_t  flowPulses = 0;
-void IRAM_ATTR onFlowPulse() { flowPulses++; }
+void IRAM_ATTR onFlowPulse() { flowPulses = flowPulses + 1; }   // (++ on volatile is deprecated in C++20)
 
 Servo        servo;
 WiFiClient   wifi;
@@ -96,7 +96,7 @@ bool  atHomestead = false;         // true between arrived_home and leaving DISP
 float intakeTargetMl = BATCH_ML;   // this fill (batch minus water already on board)
 float lastFlowMl = 0, lastTransferMl = 0, lastChlorMl = 0, lastDelivMl = 0;
 uint32_t calibUntil = 0; const char* calibCmd = "stop";
-uint32_t tSample = 0, tLogic = 0, tPub = 0, tNet = 0, tSerial = 0;
+uint32_t tSample = 0, tLogic = 0, tPub = 0, tNet = 0, tSerial = 0, tWifiKick = 0;
 String serialLine;
 
 // ============================== HELPERS ==============================
@@ -395,10 +395,16 @@ void publishAll() {
   mqtt.publish("rover/telemetry", js);
 }
 
+bool wifiConfigured() { return strcmp(WIFI_SSID, "YOUR_WIFI") != 0 && WIFI_SSID[0] != 0; }
+
 void serviceNetwork(uint32_t now) {
+  if (!wifiConfigured()) return;                  // placeholders still in: run offline (serial only)
   if (now - tNet < 5000 && (tNet != 0)) return;
   tNet = now;
-  if (WiFi.status() != WL_CONNECTED) { WiFi.begin(WIFI_SSID, WIFI_PASS); return; }   // non-blocking retry
+  if (WiFi.status() != WL_CONNECTED) {             // auto-reconnect is on; only kick it if it stays down
+    if (now - tWifiKick > 30000) { tWifiKick = now; WiFi.reconnect(); }
+    return;
+  }
   if (!mqtt.connected() && mqtt.connect(MQTT_CLIENT, nullptr, nullptr, "rover/online", 0, true, "0")) {
     const char* subs[] = {"rover/estop", "rover/mission/cmd", "rover/power/cmd", "rover/intake/cmd",
                           "rover/filtration/cmd", "rover/dosing/cmd", "rover/arm/cmd",
@@ -447,8 +453,13 @@ void setup() {
 #endif
 
   seq.setMode(PM_ACTIVE, millis());             // boot-safe: nothing is requested yet
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  if (wifiConfigured()) {
+    WiFi.mode(WIFI_STA);
+    WiFi.setAutoReconnect(true);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+  } else {
+    Serial.println("{\"event\":\"wifi_off\",\"why\":\"set WIFI_SSID / WIFI_PASS / MQTT_HOST at the top of the sketch\"}");
+  }
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(onMqtt);
   mqtt.setBufferSize(1024);                     // telemetry frame is > 256 bytes
