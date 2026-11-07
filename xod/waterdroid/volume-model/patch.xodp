@@ -1,0 +1,143 @@
+{
+  "description": "Estimated tank volumes without level sensors: IN = intake mL (flow-meter TOT), TR = transfer-pump mL (column -> delivery tank), CL = chlorine mL, OUT = delivered mL (all running totals). Gravity flow Stage 1 -> column -> Stage 3 at FILT mL/s (calibrate: time 500 mL through the column). S1/S2/S3 in % feed the level-monitor and mission-fsm; COL = column mL -> mission COL; FLTR = water still filtering.",
+  "nodes": [
+    {
+      "id": "in00",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "label": "IN",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in01",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 102,
+        "y": 0
+      },
+      "label": "TR",
+      "boundLiterals": {
+        "__out__": "0"
+      },
+      "description": "transfer pump total mL"
+    },
+    {
+      "id": "in02",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 204,
+        "y": 0
+      },
+      "label": "CL",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in03",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 306,
+        "y": 0
+      },
+      "label": "OUT",
+      "boundLiterals": {
+        "__out__": "0"
+      }
+    },
+    {
+      "id": "in04",
+      "type": "xod/patch-nodes/input-number",
+      "position": {
+        "x": 408,
+        "y": 0
+      },
+      "label": "FILT",
+      "boundLiterals": {
+        "__out__": "3"
+      }
+    },
+    {
+      "id": "in05",
+      "type": "xod/patch-nodes/input-pulse",
+      "position": {
+        "x": 510,
+        "y": 0
+      },
+      "label": "RST",
+      "boundLiterals": {
+        "__out__": "Never"
+      },
+      "description": "tanks emptied by hand"
+    },
+    {
+      "id": "impl",
+      "type": "xod/patch-nodes/not-implemented-in-xod",
+      "position": {
+        "x": 0,
+        "y": 153
+      }
+    },
+    {
+      "id": "out00",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 0,
+        "y": 306
+      },
+      "label": "S1"
+    },
+    {
+      "id": "out01",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 102,
+        "y": 306
+      },
+      "label": "S2"
+    },
+    {
+      "id": "out02",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 204,
+        "y": 306
+      },
+      "label": "S3"
+    },
+    {
+      "id": "out03",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 306,
+        "y": 306
+      },
+      "label": "CML",
+      "description": "Stage 3 mL"
+    },
+    {
+      "id": "out04",
+      "type": "xod/patch-nodes/output-number",
+      "position": {
+        "x": 408,
+        "y": 306
+      },
+      "label": "COL",
+      "description": "column mL"
+    },
+    {
+      "id": "out05",
+      "type": "xod/patch-nodes/output-boolean",
+      "position": {
+        "x": 510,
+        "y": 306
+      },
+      "label": "FLTR"
+    }
+  ]
+}

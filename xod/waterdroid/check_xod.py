@@ -15,7 +15,9 @@ for root in ROOTS:
         decl = ['#include <stdint.h>', 'typedef double Number;', 'struct CStringView { CStringView(const char*) {} };',
                 'struct XString { XString(CStringView*) {} XString() {} };', 'struct Context {};',
                 'static uint32_t millis() { return 0; }', 'template<class T> bool isInputDirty(Context) { return false; }',
-                'static void setTimeout(Context, uint32_t) {}', 'static bool isTimedOut(Context) { return false; }']
+                'static void setTimeout(Context, uint32_t) {}', '#define INPUT 0', '#define FALLING 2',
+                'static void pinMode(int, int) {}', 'static int digitalPinToInterrupt(int p) { return p; }',
+                'static void attachInterrupt(int, void (*)(), int) {}', '#include <math.h>', 'static bool isTimedOut(Context) { return false; }']
         for n in spec['nodes']:
             t = n['type'].rsplit('/', 1)[1]
             if t.startswith('input-') or t.startswith('output-'):

@@ -15,10 +15,10 @@ node {
         if (h < 0 || h > 5) h = 0;
         snprintf(buf, sizeof(buf),
                  "{\"state_id\":%d,\"battery_v\":%.2f,\"s1\":%.1f,\"s2\":%.1f,\"s3\":%.1f,\"arm\":%d,"
-                 "\"alum_ml\":%.2f,\"chlorine_ml\":%.2f,\"delivered_ml\":%.0f,\"health\":\"%s\",\"estop\":%s}",
+                 "\"transfer_ml\":%.0f,\"chlorine_ml\":%.2f,\"delivered_ml\":%.0f,\"health\":\"%s\",\"estop\":%s}",
                  (int)getValue<input_SID>(ctx), getValue<input_BATT>(ctx), getValue<input_S1>(ctx),
                  getValue<input_S2>(ctx), getValue<input_S3>(ctx), (int)getValue<input_ARM>(ctx),
-                 getValue<input_ALUM>(ctx), getValue<input_CHLR>(ctx), getValue<input_DLV>(ctx),
+                 getValue<input_TRF>(ctx), getValue<input_CHLR>(ctx), getValue<input_DLV>(ctx),
                  TJ_HEALTH[h], getValue<input_ESTP>(ctx) ? "true" : "false");
         emitValue<output_OUT>(ctx, XString(&view));
         emitValue<output_SENT>(ctx, 1);

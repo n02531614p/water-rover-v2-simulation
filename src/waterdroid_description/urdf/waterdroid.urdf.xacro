@@ -5,16 +5,15 @@
     * Two-deck wooden chassis on standoffs
     * Four 5 V TT geared DC motors + 65 mm off-road wheels (skid steer via L298N)
     * Stage 1 raw tank, Stage 2 gravity filtration column, Stage 3 disinfection/clean tank
-    * 5 V pumps: submersible intake, alum dosing (peristaltic), chlorine dosing, delivery
-    * Coarse mesh pre-filter + 40-50 cm flexible intake hose
+    * 5 V pumps: submersible intake (on the servo boom), transfer (column -> delivery tank), chlorine dosing, delivery
     * ESP32, 4-channel relay module, L298N driver, 10,000 mAh 5 V power bank
-    * Stage 4 delivery arm on an SG90 servo (0 deg = stowed, 90 deg = deployed)
+    * SG90 servo swinging the INTAKE boom (hose + pre-filter + pump) into the river; fixed delivery nozzle
 
   Gazebo (Harmonic / Jazzy) systems used:
     DiffDrive (4 joints, skid steer)  -> /cmd_vel, /odom, /tf
     OdometryPublisher (ground truth)  -> /ground_truth/odom
     JointStatePublisher               -> /joint_states
-    JointPositionController (servo)   <- /arm_servo/cmd_pos  (rad)
+    JointPositionController (servo)   <- /arm_servo/cmd_pos  (rad, intake boom)
 -->
 <robot name="waterdroid" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
@@ -39,8 +38,8 @@
   <xacro:property name="upper_z" value="${deck_gap}"/>   <!-- upper deck relative to base_link -->
   <xacro:property name="top" value="${upper_z + deck_t/2}"/>  <!-- top surface of upper deck -->
 
-  <xacro:property name="tank_size" value="0.095"/>       <!-- ~0.86 L cube, 500-1000 mL class -->
-  <xacro:property name="water_mass" value="0.6"/>        <!-- tank + typical water load -->
+  <xacro:property name="tank_size" value="0.075"/>       <!-- ~420 mL cube: 400 mL tanks -->
+  <xacro:property name="water_mass" value="0.3"/>        <!-- tank + up to 400 mL water -->
 
   <!-- ===================== Materials ===================== -->
   <material name="wood"><color rgba="0.82 0.62 0.42 1"/></material>
@@ -215,95 +214,89 @@
                   mat="clean_water" mass="${water_mass}" collide="true"/>
 
   <!-- Pumps -->
-  <xacro:pump name="alum_dosing_pump"     parent="stage1_raw_tank"   x="0.0"  y="0.0"  z="${tank_size/2 + 0.016}"/>
+  <!-- transfer pump (relay CH2, was the alum pump): filtration column -> Stage 3 delivery tank -->
+  <xacro:pump name="transfer_pump"        parent="upper_deck"        x="0.035" y="0.010" z="${deck_t/2 + 0.016}"/>
   <xacro:pump name="chlorine_dosing_pump" parent="stage3_clean_tank" x="0.0"  y="0.0"  z="${tank_size/2 + 0.016}"/>
-  <xacro:pump name="delivery_pump"        parent="upper_deck"        x="0.135" y="-0.060" z="${deck_t/2 + 0.016}"/>
-  <xacro:pump name="intake_pump"          parent="base_link"         x="${-lower_l/2 - 0.45}" y="0.10" z="-0.025"/>
+  <xacro:pump name="delivery_pump"        parent="upper_deck"        x="-0.150" y="-0.085" z="${deck_t/2 + 0.016}"/>
 
-  <!-- Coarse mesh pre-filter on the intake line -->
-  <link name="coarse_prefilter">
-    <visual><geometry><cylinder radius="0.010" length="0.030"/></geometry><material name="metal"/></visual>
-    <xacro:cyl_inertia m="0.01" r="0.010" h="0.030"/>
-  </link>
-  <joint name="coarse_prefilter_joint" type="fixed">
-    <parent link="upper_deck"/><child link="coarse_prefilter"/>
-    <origin xyz="-0.17 0.10 ${deck_t/2 + 0.012}" rpy="${PI/2} 0 0"/>
-  </joint>
-
-  <!-- Flexible intake hose (~45 cm) trailing from the rear; the intake pump is at its tip -->
-  <link name="intake_hose">
+  <!-- Fixed delivery outlet: nozzle over the right-hand side, the homestead container goes under it -->
+  <link name="delivery_nozzle">
     <visual>
-      <origin xyz="0 0 0" rpy="0 ${PI/2} 0"/>
-      <geometry><cylinder radius="0.005" length="0.45"/></geometry>
-      <material name="hose"/>
+      <geometry><cylinder radius="0.007" length="0.030"/></geometry>
+      <material name="nozzle"/>
     </visual>
-    <xacro:cyl_inertia m="0.02" r="0.005" h="0.45"/>
+    <xacro:cyl_inertia m="0.004" r="0.007" h="0.030"/>
   </link>
-  <joint name="intake_hose_joint" type="fixed">
-    <parent link="base_link"/><child link="intake_hose"/>
-    <origin xyz="${-lower_l/2 - 0.225} 0.10 0.0" rpy="0 -0.08 0"/>
+  <joint name="delivery_nozzle_joint" type="fixed">
+    <parent link="upper_deck"/><child link="delivery_nozzle"/>
+    <origin xyz="-0.150 -0.135 -0.010" rpy="0 0 0"/>
   </joint>
 
-  <!-- ===================== Electronics / power ===================== -->
-  <xacro:deck_box name="power_bank" parent="upper_deck" x="-0.085" y="-0.060" z="${deck_t/2 + 0.0125}"
-                  sx="0.14" sy="0.068" sz="0.025" mat="pcb_dark" mass="0.22"/>
-  <xacro:deck_box name="esp32" parent="upper_deck" x="0.025" y="-0.045" z="${deck_t/2 + 0.006}"
-                  sx="0.052" sy="0.028" sz="0.012" mat="pcb_dark" mass="0.01"/>
-  <xacro:deck_box name="relay_module" parent="upper_deck" x="0.065" y="-0.090" z="${deck_t/2 + 0.009}"
-                  sx="0.075" sy="0.055" sz="0.018" mat="pcb_blue" mass="0.05"/>
-
-  <!-- ===================== Stage 4: servo-driven delivery arm ===================== -->
-  <link name="arm_mount">
+  <!-- ===================== Servo-driven intake (SG90) ===================== -->
+  <!-- The SG90 swings the intake boom (hose + coarse pre-filter + submersible pump) from stowed (0 deg,
+       standing almost upright) to deployed (90 deg, reaching forward and down into the river). -->
+  <link name="intake_mount">
     <visual><geometry><box size="0.025 0.025 0.050"/></geometry><material name="wood"/></visual>
     <xacro:box_inertia m="0.02" x="0.025" y="0.025" z="0.050"/>
   </link>
-  <joint name="arm_mount_joint" type="fixed">
-    <parent link="upper_deck"/><child link="arm_mount"/>
-    <origin xyz="0.155 -0.095 ${deck_t/2 + 0.025}" rpy="0 0 0"/>
+  <joint name="intake_mount_joint" type="fixed">
+    <parent link="upper_deck"/><child link="intake_mount"/>
+    <origin xyz="0.165 0.0 ${deck_t/2 + 0.025}" rpy="0 0 0"/>
   </joint>
 
-  <!-- SG90 body -->
   <link name="sg90_servo">
     <visual><geometry><box size="0.023 0.012 0.022"/></geometry><material name="servo_blue"/></visual>
     <xacro:box_inertia m="0.009" x="0.023" y="0.012" z="0.022"/>
   </link>
   <joint name="sg90_servo_joint" type="fixed">
-    <parent link="arm_mount"/><child link="sg90_servo"/>
-    <origin xyz="0 0 0.036" rpy="0 0 0"/>
+    <parent link="intake_mount"/><child link="sg90_servo"/>
+    <origin xyz="0 0.018 0.020" rpy="0 0 0"/>
   </joint>
 
-  <!-- Boom: rotates about Z. 0 rad = stowed along +X (over the front), PI/2 = deployed out to the right (-Y). -->
-  <link name="delivery_arm">
+  <!-- Boom pitches about Y. Stowed it stands 20 deg forward of vertical; 90 deg of servo travel ends 20 deg below horizontal. -->
+  <xacro:property name="boom_len" value="0.20"/>
+  <xacro:property name="boom_lean" value="0.349"/>
+  <link name="intake_arm">
     <visual>
-      <origin xyz="0.075 0 0.020" rpy="0 ${PI/2 - 0.26} 0"/>
-      <geometry><box size="0.012 0.012 0.155"/></geometry>
+      <origin xyz="${boom_len/2*sin(boom_lean)} 0 ${boom_len/2*cos(boom_lean)}" rpy="0 ${boom_lean} 0"/>
+      <geometry><box size="0.012 0.012 ${boom_len}"/></geometry>
       <material name="wood"/>
     </visual>
+    <visual>
+      <origin xyz="${boom_len/2*sin(boom_lean) + 0.009} 0 ${boom_len/2*cos(boom_lean)}" rpy="0 ${boom_lean} 0"/>
+      <geometry><cylinder radius="0.005" length="${boom_len}"/></geometry>
+      <material name="hose"/>
+    </visual>
     <inertial>
-      <mass value="0.02"/>
-      <origin xyz="0.075 0 0.020"/>
-      <inertia ixx="0.000005" ixy="0" ixz="0" iyy="0.00004" iyz="0" izz="0.00004"/>
+      <mass value="0.03"/>
+      <origin xyz="${boom_len/2*sin(boom_lean)} 0 ${boom_len/2*cos(boom_lean)}"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.000005"/>
     </inertial>
   </link>
   <joint name="arm_servo_joint" type="revolute">
-    <parent link="sg90_servo"/><child link="delivery_arm"/>
-    <origin xyz="0 0 0.012" rpy="0 0 0"/>
-    <axis xyz="0 0 -1"/>
+    <parent link="intake_mount"/><child link="intake_arm"/>
+    <origin xyz="0 0 0.022" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
     <limit lower="0.0" upper="${PI/2}" effort="0.18" velocity="5.2"/>  <!-- SG90: 1.8 kg.cm, 0.1 s/60deg -->
     <dynamics damping="0.002" friction="0.0"/>
   </joint>
 
-  <link name="delivery_nozzle">
+  <!-- Submersible intake pump with the coarse mesh pre-filter at the boom tip -->
+  <link name="intake_pump">
     <visual>
-      <origin xyz="0 0 -0.012" rpy="0 0 0"/>
-      <geometry><cylinder radius="0.007" length="0.024"/></geometry>
-      <material name="nozzle"/>
+      <geometry><cylinder radius="0.014" length="0.035"/></geometry>
+      <material name="pcb_dark"/>
     </visual>
-    <xacro:cyl_inertia m="0.004" r="0.007" h="0.024"/>
+    <visual>
+      <origin xyz="0 0 0.026" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.012" length="0.018"/></geometry>
+      <material name="metal"/>
+    </visual>
+    <xacro:cyl_inertia m="0.04" r="0.014" h="0.035"/>
   </link>
-  <joint name="delivery_nozzle_joint" type="fixed">
-    <parent link="delivery_arm"/><child link="delivery_nozzle"/>
-    <origin xyz="0.150 0 0.040" rpy="0 0 0"/>
+  <joint name="intake_pump_joint" type="fixed">
+    <parent link="intake_arm"/><child link="intake_pump"/>
+    <origin xyz="${(boom_len + 0.018)*sin(boom_lean)} 0 ${(boom_len + 0.018)*cos(boom_lean)}" rpy="0 ${boom_lean} 0"/>
   </joint>
 
   <!-- ===================== Gazebo systems ===================== -->
@@ -347,7 +340,7 @@
       <topic>joint_states</topic>
     </plugin>
 
-    <!-- SG90 servo: position controlled, angle in radians -->
+    <!-- SG90 servo on the intake boom: position controlled, angle in radians -->
     <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
       <joint_name>arm_servo_joint</joint_name>
       <topic>arm_servo/cmd_pos</topic>

@@ -15,18 +15,21 @@
 #define PIN_L298_IN4   33   // right dir B
 #define PIN_L298_ENB   32   // right side PWM  (remove the ENB jumper)
 
-// ---- Issue #10 4-channel 5 V relay module (active LOW) = the four pumps ----
-#define PIN_RELAY_CH1  23   // CH1 intake pump      (Issue #1)
-#define PIN_RELAY_CH2  19   // CH2 alum dosing pump (Issue #3)
-#define PIN_RELAY_CH3  18   // CH3 chlorine pump    (Issue #3)
-#define PIN_RELAY_CH4   4   // CH4 delivery pump    (Issue #8)
+// ---- Issue #10 relays (active LOW) = the four pumps, on two 2-channel boards ----
+#define PIN_RELAY_CH1  23   // board A IN1: intake pump      (Issue #1)
+#define PIN_RELAY_CH2  19   // board A IN2: transfer pump, column -> delivery tank (was alum)
+#define PIN_RELAY_CH3  18   // board B IN1: chlorine pump    (Issue #3)
+#define PIN_RELAY_CH4   4   // board B IN2: delivery pump    (Issue #8)
 #define RELAY_ACTIVE_LOW 1
 
 // ---- Issue #6  SG90 delivery-arm servo ----
 #define PIN_SERVO      13
 
-// ---- Issue #5  level sensors (analog, ADC1 input-only pins) ----
-#define PIN_LEVEL_S1   34   // Stage 1 raw tank
+// ---- Issue #1/#5 water-flow sensor (hall turbine, intake line) ----
+#define PIN_FLOW_SENSOR 34  // pulse output via 10k/20k divider (sensor runs on 5 V)
+
+// ---- Issue #5  OPTIONAL level sensors (analog, ADC1 input-only pins; not fitted yet) ----
+// Stage 1 is measured by the flow sensor, so only S2/S3 would need a sensor.
 #define PIN_LEVEL_S2   35   // Stage 2 filtration column
 #define PIN_LEVEL_S3   36   // Stage 3 clean tank (VP)
 

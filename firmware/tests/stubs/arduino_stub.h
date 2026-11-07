@@ -68,3 +68,8 @@ inline bool isDigit(char c) { return c >= '0' && c <= '9'; }
 #define constrain(x, lo, hi) ((x) < (lo) ? (lo) : ((x) > (hi) ? (hi) : (x)))
 inline void analogSetPinAttenuation(uint8_t, adc_attenuation_t) {}
 inline void setCpuFrequencyMhz(uint32_t) {}
+#define IRAM_ATTR
+#define FALLING 2
+#define RISING 1
+inline int digitalPinToInterrupt(int p) { return p; }
+inline void attachInterrupt(int, void (*)(void), int) {}

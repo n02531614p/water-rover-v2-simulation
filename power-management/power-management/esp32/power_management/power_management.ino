@@ -30,8 +30,8 @@ const char* TOPIC_ONLINE = "rover/power/online";
 
 // Relay module inputs (avoid GPIO 0/2/12/15 strapping pins and 34-39 input-only pins)
 // Pins follow the single rover pin map: firmware/waterdroid_esp32/src/rover_pins.h
-const uint8_t RELAY_PIN[PC_CHANNELS] = {23, 19, 18, 4};    // CH1 intake, CH2 alum, CH3 chlorine, CH4 delivery pump
-const char*   RELAY_NAME[PC_CHANNELS] = {"intake_pump", "alum_pump", "chlorine_pump", "delivery_pump"};
+const uint8_t RELAY_PIN[PC_CHANNELS] = {23, 19, 18, 4};    // CH1 intake, CH2 transfer, CH3 chlorine, CH4 delivery pump
+const char*   RELAY_NAME[PC_CHANNELS] = {"intake_pump", "transfer_pump", "chlorine_pump", "delivery_pump"};
 const bool RELAY_ACTIVE_LOW = true;              // typical SRD-05VDC 4-ch boards: IN LOW = relay ON
 
 // 5 V rail sense: rail -> R_TOP -> GPIO39 -> R_BOTTOM -> GND   (+100 nF from GPIO39 to GND)

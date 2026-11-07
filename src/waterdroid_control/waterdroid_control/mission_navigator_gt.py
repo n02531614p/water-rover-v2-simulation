@@ -9,11 +9,12 @@ x=10, offload bays at (6,3), (6,-3) and (-3,-3)).
 
 Mission (state names are the Master System State shown on the Node-RED dashboard):
   STATE_EN_ROUTE_RIVER      drive east to the river bank
-  STATE_PUMPING             intake pump fills Stage 1, alum dosed for the batch
+  STATE_PUMPING             servo lowers the intake, pump fills Stage 1, intake raised
+  STATE_FILTERING           gravity filter; transfer pump moves the column water to the delivery tank
   STATE_FILTERING           wait for the gravity column to pass the batch to Stage 3
   STATE_DOSING_CHLORINE     chlorine into Stage 3 + contact time
   STATE_EN_ROUTE_HOMESTEAD  reverse off the bank, pivot, drive to each bay
-  STATE_DISPENSING          arm EXTEND -> delivery pump -> arm RETRACT
+  STATE_DISPENSING          delivery pump through the fixed nozzle
   STATE_RETURNING           back to the depot
   STATE_COMPLETE / STATE_PAUSED / STATE_EMERGENCY_STOP
 
@@ -56,9 +57,17 @@ class MissionNavigator(Node):
         self.pump_timeout = p('pump_timeout_s', 120.0).value
         self.filter_timeout = p('filter_timeout_s', 300.0).value
         self.contact_s = p('chlorine_contact_s', 5.0).value
-        self.alum_ml_per_l = p('alum_ml_per_litre', 3.0).value
-        self.raw_cap_ml = p('raw_tank_capacity_ml', 1000.0).value
+        self.transfer_min_ml = p('transfer_min_ml', 20.0).value
+        self.raw_cap_ml = p('raw_tank_capacity_ml', 380.0).value   # batch per trip
         self.action_timeout = p('action_timeout_s', 60.0).value
+        # 'ground_truth' = perfect pose from Gazebo; 'dead_reckoning' = like the real rover
+        # (no GPS/compass): pose integrated from the commanded /cmd_vel only, so wheel slip
+        # shows up as drift. The true pose is still logged at every stop for comparison.
+        self.pose_source = p('pose_source', 'ground_truth').value
+        # Dead-reckoning calibration, the sim twin of NAV_SPEED_MPS / NAV_TURN_DPS on the ESP32:
+        # measured speed / commanded speed (run calib, measure, divide). Skid steer slips most when pivoting.
+        self.dr_speed_scale = p('dr_speed_scale', 1.0).value
+        self.dr_turn_scale = p('dr_turn_scale', 1.0).value
 
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.proc_pub = self.create_publisher(String, '/waterdroid/cmd', 10)
@@ -84,6 +93,11 @@ class MissionNavigator(Node):
         self.bay_idx = 0
         self.mission_state = 'STATE_IDLE'
 
+        self.true_x = self.true_y = self.true_yaw = 0.0
+        self.last_twist = Twist()
+        self.dr_last = None
+        if self.pose_source == 'dead_reckoning':
+            self.create_subscription(Twist, '/cmd_vel', self._on_cmd_vel, 10)
         self.create_timer(0.02, self.control_loop)
         self.create_timer(0.5, self._publish_state)
         self.get_logger().info('=== Waterdroid 4WD mission (ground-truth odom) active ===')
@@ -100,9 +114,32 @@ class MissionNavigator(Node):
         if self.origin_x is None:
             self.origin_x, self.origin_y, self.origin_yaw = x, y, yaw
             self.get_logger().info(f'Ground-truth origin set: x={x:.2f} y={y:.2f} yaw={yaw:.2f}')
-        self.pose_x = x - self.origin_x
-        self.pose_y = y - self.origin_y
-        self.yaw = self._wrap(yaw - self.origin_yaw)
+        self.true_x = x - self.origin_x
+        self.true_y = y - self.origin_y
+        self.true_yaw = self._wrap(yaw - self.origin_yaw)
+        if self.pose_source != 'dead_reckoning':
+            self.pose_x, self.pose_y, self.yaw = self.true_x, self.true_y, self.true_yaw
+
+    def _on_cmd_vel(self, msg):
+        self.last_twist = msg
+
+    def _dead_reckon(self):
+        now = self.now()
+        if self.dr_last is not None:
+            dt = now - self.dr_last
+            v = self.last_twist.linear.x * self.dr_speed_scale
+            w = self.last_twist.angular.z * self.dr_turn_scale
+            self.yaw = self._wrap(self.yaw + w * dt)
+            self.pose_x += v * math.cos(self.yaw) * dt
+            self.pose_y += v * math.sin(self.yaw) * dt
+        self.dr_last = now
+
+    def _drift_note(self):
+        if self.pose_source != 'dead_reckoning':
+            return ''
+        err = math.hypot(self.pose_x - self.true_x, self.pose_y - self.true_y)
+        return (f' | dead-reckoned ({self.pose_x:.2f},{self.pose_y:.2f}) true ({self.true_x:.2f},'
+                f'{self.true_y:.2f}) drift {err:.2f} m')
 
     def _on_proc(self, msg):
         try:
@@ -168,6 +205,8 @@ class MissionNavigator(Node):
                     and self.bay_idx < len(BAYS) else None),
             'x': round(self.pose_x, 2), 'y': round(self.pose_y, 2), 'yaw': round(self.yaw, 2),
             'target': self._target(),
+            'pose_source': self.pose_source,
+            'true': [round(self.true_x, 2), round(self.true_y, 2)],
         })))
 
     def _target(self):
@@ -191,7 +230,14 @@ class MissionNavigator(Node):
         dist = math.hypot(dx, dy)
         err = self._wrap(math.atan2(dy, dx) - self.yaw)
         cmd = Twist()
-        if abs(err) > 0.35:
+        if self.pose_source == 'dead_reckoning':
+            # Same as the ESP32 RouteNavigator: pivot at ONE fixed rate, then drive dead straight,
+            # so the single calibrated pivot rate stays valid (blended steering slips differently).
+            if abs(err) > 0.12 and dist > 0.05:
+                cmd.angular.z = 0.6 if err > 0 else -0.6
+            else:
+                cmd.linear.x = speed
+        elif abs(err) > 0.35:
             cmd.angular.z = 1.0 if err > 0 else -1.0
         else:
             cmd.linear.x = min(speed, max(0.15, 0.5 * dist))
@@ -207,6 +253,8 @@ class MissionNavigator(Node):
         if self.origin_x is None:
             self.stop()
             return
+        if self.pose_source == 'dead_reckoning':
+            self._dead_reckon()          # also while paused, so dashboard teleop is tracked
         if self.estop:
             self.stop()
             self._set_state('STATE_EMERGENCY_STOP')
@@ -226,36 +274,64 @@ class MissionNavigator(Node):
         if self.pose_x < self.bank_x:
             cmd = Twist()
             cmd.linear.x = self.drive_speed
-            cmd.angular.z = -0.8 * self.pose_y        # hold the road centre line
+            if self.pose_source != 'dead_reckoning':
+                cmd.angular.z = -0.8 * self.pose_y    # hold the road centre line
             self.cmd_pub.publish(cmd)
         else:
             self.stop()
-            self.get_logger().info(f'Arrived at river bank x={self.pose_x:.2f}')
+            self.get_logger().info(f'Arrived at river bank x={self.pose_x:.2f}' + self._drift_note())
             self._goto('PUMP')
 
-    # 2. intake pump + in-line alum dose (never while driving: brownout guard)
+    # 2. lower the servo intake boom, pump the batch, raise the boom (never while driving)
     def _phase_pump(self):
         self.stop()
         self._set_state('STATE_PUMPING')
+        timed_out = self._elapsed() > self.action_timeout
         if self.sub == 0:
-            alum_ml = self.raw_cap_ml / 1000.0 * self.alum_ml_per_l
+            self.arm_pub.publish(String(data='EXTEND'))
+            self.sub, self.t0 = 1, self.now()
+        elif self.sub == 1 and (self.arm.get('deployed') or timed_out):
             self.proc_pub.publish(String(data='intake:start'))
-            self.proc_pub.publish(String(data=f'dose_alum:{alum_ml:.2f}'))
-            self.sub = 1
-        elif self._elapsed() > 1.0:
-            done = not self.proc.get('intake', False) and self._proc_idle('alum_pump')
+            self.sub, self.t0 = 2, self.now()
+        elif self.sub == 2 and self._elapsed() > 1.0:
+            self._maybe_transfer(final=False)          # keep the small column from overflowing
+            done = not self.proc.get('intake_requested', self.proc.get('intake', False))
             if done or self._elapsed() > self.pump_timeout:
                 if self.proc.get('fault'):
                     self.get_logger().warn(f"intake ended with fault {self.proc.get('fault')}")
-                self._goto('FILTER')
+                self.arm_pub.publish(String(data='RETRACT'))
+                self.sub, self.t0 = 3, self.now()
+        elif self.sub == 3 and (self.arm.get('stowed') or timed_out):
+            self._goto('FILTER')
 
-    # 3. wait for the gravity column to pass the batch to Stage 3
+    # 3. gravity Stage 1 -> column; transfer pump column -> delivery tank whenever water collects
     def _phase_filter(self):
         self.stop()
         self._set_state('STATE_FILTERING')
-        if self._elapsed() > 1.0 and (not self.proc.get('filtering', True)
-                                      or self._elapsed() > self.filter_timeout):
+        if self._elapsed() > self.filter_timeout:
             self._goto('CHLORINATE')
+            return
+        if self._elapsed() < 1.0:
+            return
+        if not self._maybe_transfer(final=True) and self._transfer_settled():
+            if self.proc.get('s1_ml', 0.0) <= 1.0 and self.proc.get('s2_ml', 0.0) <= 2.0:
+                self._goto('CHLORINATE')
+
+    def _transfer_settled(self):
+        # process_state arrives at 5 Hz: give a new transfer time to show up before deciding again
+        return self._proc_idle('transfer_pump') and self.now() - getattr(self, 't_transfer', -10.0) > 1.0
+
+    def _maybe_transfer(self, final):
+        """Start the transfer pump (column -> delivery tank) when enough has collected."""
+        if not self._transfer_settled():
+            return True
+        column = self.proc.get('s2_ml', 0.0)
+        raw_empty = self.proc.get('s1_ml', 0.0) <= 1.0
+        if column >= self.transfer_min_ml or (final and raw_empty and column > 2.0):
+            self.proc_pub.publish(String(data=f'transfer:{int(column + 0.5)}'))
+            self.t_transfer = self.now()
+            return True
+        return False
 
     # 4. chlorine into Stage 3 + contact time
     def _phase_chlorinate(self):
@@ -301,26 +377,20 @@ class MissionNavigator(Node):
         name, x, y = BAYS[self.bay_idx]
         if self.drive_towards(x, y) < self.arrive_tol + 0.15:
             self.stop()
-            self.get_logger().info(f'Arrived at {name}')
+            self.get_logger().info(f'Arrived at {name}' + self._drift_note())
             self._goto('DISPENSE')
 
-    # 8. arm EXTEND -> delivery pump -> arm RETRACT
+    # 8. delivery pump through the fixed nozzle
     def _phase_dispense(self):
         self.stop()
         self._set_state('STATE_DISPENSING')
         timed_out = self._elapsed() > self.action_timeout
         if self.sub == 0:
-            self.arm_pub.publish(String(data='EXTEND'))
-            self.sub, self.t0 = 1, self.now()
-        elif self.sub == 1 and (self.arm.get('deployed') or timed_out):
             remaining = len(BAYS) - self.bay_idx
             ml = self.proc.get('s3_ml', 0.0) / max(1, remaining)
             self.proc_pub.publish(String(data=f'deliver:{int(ml)}'))
-            self.sub, self.t0 = 2, self.now()
-        elif self.sub == 2 and self._elapsed() > 1.0 and (self._proc_idle('delivery_pump') or timed_out):
-            self.arm_pub.publish(String(data='RETRACT'))
-            self.sub, self.t0 = 3, self.now()
-        elif self.sub == 3 and (self.arm.get('stowed') or timed_out):
+            self.sub, self.t0 = 1, self.now()
+        elif self.sub == 1 and self._elapsed() > 1.0 and (self._proc_idle('delivery_pump') or timed_out):
             self.bay_idx += 1
             self._goto('DRIVE_BAY' if self.bay_idx < len(BAYS) else 'RETURN')
 
@@ -329,7 +399,7 @@ class MissionNavigator(Node):
         self._set_state('STATE_RETURNING')
         if self.drive_towards(0.0, 0.0) < 0.4:
             self.stop()
-            self.get_logger().info('=== MISSION COMPLETE: Waterdroid parked at depot ===')
+            self.get_logger().info('=== MISSION COMPLETE: Waterdroid parked at depot ===' + self._drift_note())
             self._goto('COMPLETE')
 
     def _phase_complete(self):

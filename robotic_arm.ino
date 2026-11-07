@@ -1,4 +1,5 @@
-// Stage 4 delivery arm (Issue #6) - bench test sketch.
+// Servo INTAKE arm (Issue #6) - bench test sketch: EXTEND lowers the intake into the water, RETRACT raises it.
+// (The delivery nozzle is fixed; the servo moves the intake hose + pump.)
 // Runs on the rover ESP32 (ESP32Servo library, GPIO13 per firmware/waterdroid_esp32/src/rover_pins.h)
 // or on an Arduino Uno for bench testing (Servo library, pin 9).
 // The integrated rover firmware uses the same logic in src/motion_cores.h (ServoArm).
@@ -13,7 +14,7 @@ const int SERVO_PIN = 9;
 Servo armServo;
 
 const int STOW_ANGLE = 0;
-const int DEPLOY_ANGLE = 90;
+const int DEPLOY_ANGLE = 45;   // 45 deg travel from the start (stowed) position
 
 int currentAngle = STOW_ANGLE;
 int targetAngle = STOW_ANGLE;
@@ -37,7 +38,7 @@ void setup() {
   armServo.write(STOW_ANGLE);
 
   Serial.println("Robotic Arm Controller Ready");
-  Serial.println("Commands: EXTEND, RETRACT, ANGLE:0-90");
+  Serial.println("Commands: EXTEND, RETRACT, ANGLE:0-45");
 }
 
 void loop() {
@@ -78,7 +79,7 @@ void readSerialCommand() {
             Serial.print("Target angle: ");
             Serial.println(targetAngle);
           } else {
-            Serial.println("Error: angle must be between 0 and 90");
+            Serial.println("Error: angle must be between 0 and 45");
           }
         } else {
           Serial.println("Error: invalid angle command");

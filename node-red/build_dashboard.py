@@ -104,7 +104,7 @@ add({'id': BROKER, 'type': 'mqtt-broker', 'name': 'Rover broker', 'broker': 'loc
 
 for i, (tid, name, icon) in enumerate([
         ('wd_t_mission', 'Mission', 'dashboard'), ('wd_t_water', 'Water train', 'opacity'),
-        ('wd_t_arm', 'Arm & Delivery', 'pan_tool'), ('wd_t_drive', 'Drive & Map', 'directions_car'),
+        ('wd_t_arm', 'Intake & Delivery', 'pan_tool'), ('wd_t_drive', 'Drive & Map', 'directions_car'),
         ('wd_t_power', 'Power', 'battery_charging_full')]):
     ui_tab(tid, name, icon, i + 1)
 
@@ -113,11 +113,12 @@ group('wd_g_state', 'wd_t_mission', 'Master System State (#11)', 2)
 group('wd_g_log', 'wd_t_mission', 'Mission log', 3)
 group('wd_g_intake', 'wd_t_water', 'Intake (#1)', 1, 4)
 group('wd_g_filter', 'wd_t_water', 'Filtration (#5)', 2, 6)
-group('wd_g_dose', 'wd_t_water', 'Chemical dosing (#3)', 3, 6)
-group('wd_g_arm', 'wd_t_arm', 'Delivery arm (#6)', 1)
+group('wd_g_dose', 'wd_t_water', 'Transfer pump + chlorine (#5 #3)', 3, 6)
+group('wd_g_arm', 'wd_t_arm', 'Intake arm - servo (#6)', 1)
 group('wd_g_deliv', 'wd_t_arm', 'Clean water delivery (#8)', 2)
 group('wd_g_drive', 'wd_t_drive', 'Teleoperation D-pad (#9)', 1, 4)
-group('wd_g_map', 'wd_t_drive', 'Position & waypoints (#7)', 2, 8)
+group('wd_g_map', 'wd_t_drive', 'Position & fixed route (#7)', 2, 8)
+group('wd_g_route', 'wd_t_drive', 'Fixed route (dead reckoning)', 3, 4)
 group('wd_g_power', 'wd_t_power', 'Power bank & mode (#10)', 1)
 
 # ======================================================================= E-STOP (#12)
@@ -160,7 +161,7 @@ gauge('wd_batt_gauge', 'wd_g_power', '5 V rail', 'V', 3.5, 5.5, 1, 'mission', se
 mqtt_in('wd_tel_in', 'rover/telemetry', ['wd_tel_csv', 'wd_tel_last'], 'log')
 func('wd_tel_csv', 'Telemetry -> CSV line',
      "const t = msg.payload || {};\n"
-     "const cols = ['state','state_id','battery_v','s1','s2','s3','arm','alum_ml','chlorine_ml','delivered_ml','health','estop'];\n"
+     "const cols = ['state','state_id','battery_v','s1','s2','s3','arm','transfer_ml','chlorine_ml','delivered_ml','health','estop'];\n"
      "let line = new Date().toISOString() + ',' + cols.map(c => t[c] !== undefined ? (typeof t[c] === 'object' ? JSON.stringify(t[c]).replace(/,/g,';') : t[c]) : '').join(',');\n"
      "if (!context.get('header')) { context.set('header', true); node.send({payload: 'time,' + cols.join(',')}); }\n"
      "msg.payload = line;\nreturn msg;", 1, [['wd_tel_file']], 'log')
@@ -177,16 +178,18 @@ add({'id': 'wd_log_note', 'type': 'comment', 'z': TAB, 'name': 'Log file: ~/.nod
 
 # ======================================================================= Intake (#1)
 mqtt_out('wd_intake_out', 'rover/intake/cmd', 'intake')
-button('wd_btn_in_start', 'wd_g_intake', 'Manual Water Intake', 'start', 'str', ['wd_intake_out'], 'intake', 1,
+button('wd_btn_in_start', 'wd_g_intake', 'Manual Water Intake (lowers intake)', 'start', 'str', ['wd_intake_out'], 'intake', 1,
        bg='#2980b9', width=4, icon='water_drop')
 button('wd_btn_in_stop', 'wd_g_intake', 'Stop', 'stop', 'str', ['wd_intake_out'], 'intake', 2, width=2)
 button('wd_btn_in_rst', 'wd_g_intake', 'Reset fault', 'reset', 'str', ['wd_intake_out'], 'intake', 3, width=2)
 mqtt_in('wd_intake_in', 'rover/intake/status', ['wd_intake_fmt'], 'intake')
 func('wd_intake_fmt', 'Intake status',
      "const s = msg.payload || {};\n"
-     "return [{payload: Number(s.level_pct || 0)}, {payload: (s.pump ? 'PUMP ON' : 'pump off') + ' . ' + (s.state || '') + (s.fault ? ' . FAULT ' + s.fault : '')}];",
+     "const fill = s.target_ml ? Math.min(100, 100 * (s.batch_ml || 0) / s.target_ml) : Number(s.level_pct || 0);\n"
+     "const flowTxt = s.flow_ml_s !== undefined ? ` . ${Number(s.flow_ml_s).toFixed(1)} mL/s . ${Number(s.batch_ml||0).toFixed(0)}/${Number(s.target_ml||0).toFixed(0)} mL` : '';\n"
+     "return [{payload: Math.round(fill)}, {payload: (s.pump ? 'PUMP ON' : 'pump off') + ' . ' + (s.state || '') + flowTxt + (s.fault ? ' . FAULT ' + s.fault : '')}];",
      2, [['wd_intake_gauge'], ['wd_intake_txt']], 'intake')
-gauge('wd_intake_gauge', 'wd_g_intake', 'Stage 1 fill', '%', 0, 100, 4, 'intake', width=4, seg=('20', '90'),
+gauge('wd_intake_gauge', 'wd_g_intake', 'Batch filled (flow sensor)', '%', 0, 100, 4, 'intake', width=4, seg=('20', '90'),
       colors=['#e6a23c', '#3498db', '#2ecc71'])
 text('wd_intake_txt', 'wd_g_intake', 'Intake', 5, 'intake', width=4)
 
@@ -209,66 +212,67 @@ template('wd_filter_badge', 'wd_g_filter', 'Health badge',
 button('wd_btn_f_pause', 'wd_g_filter', 'Pause intake', 'pause', 'str', ['wd_filter_out'], 'filter', 5, width=3)
 button('wd_btn_f_auto', 'wd_g_filter', 'Auto', 'auto', 'str', ['wd_filter_out'], 'filter', 6, width=3)
 
-# ======================================================================= Dosing (#3)
+# ======================================================================= Transfer pump (#5) + chlorine (#3)
+mqtt_out('wd_tr_out', 'rover/transfer/cmd', 'dose')
+button('wd_btn_tr_run', 'wd_g_dose', 'Run transfer pump', 'run', 'str', ['wd_tr_out'], 'dose', 1, width=3, bg='#2980b9')
+button('wd_btn_tr_stop', 'wd_g_dose', 'Stop transfer', 'stop', 'str', ['wd_tr_out'], 'dose', 2, width=3)
+mqtt_in('wd_tr_in', 'rover/transfer/status', ['wd_tr_fmt'], 'dose')
+func('wd_tr_fmt', 'Transfer status',
+     "const s = msg.payload || {};\n"
+     "return [{payload: `${s.pump ? 'PUMPING' : 'idle'} . column ${Number(s.column_ml||0).toFixed(0)} mL . moved ${Number(s.total_ml||0).toFixed(0)} mL total`}];",
+     1, [['wd_tr_txt']], 'dose')
+text('wd_tr_txt', 'wd_g_dose', 'Transfer (column -> delivery tank)', 3, 'dose')
 mqtt_out('wd_dose_out', 'rover/dosing/cmd', 'dose')
-numeric('wd_num_alum', 'wd_g_dose', 'Alum mL', 0, 10, 0.5, 1, 'dose', ['wd_dose_alum_fmt'], 'alum')
-func('wd_dose_alum_fmt', 'store alum mL', "flow.set('alum_ml', Number(msg.payload));\nreturn null;", 1, [[]], 'dose')
-button('wd_btn_dose_alum', 'wd_g_dose', 'Dose alum', 'alum', 'str', ['wd_dose_build'], 'dose', 2, width=3,
-       bg='#8e44ad')
-numeric('wd_num_cl', 'wd_g_dose', 'Chlorine mL', 0, 5, 0.1, 3, 'dose', ['wd_dose_cl_fmt'], 'chlorine')
+numeric('wd_num_cl', 'wd_g_dose', 'Chlorine mL', 0, 4, 0.1, 4, 'dose', ['wd_dose_cl_fmt'], 'chlorine')
 func('wd_dose_cl_fmt', 'store chlorine mL', "flow.set('chlorine_ml', Number(msg.payload));\nreturn null;", 1,
      [[]], 'dose')
-button('wd_btn_dose_cl', 'wd_g_dose', 'Dose chlorine', 'chlorine', 'str', ['wd_dose_build'], 'dose', 4, width=3,
+button('wd_btn_dose_cl', 'wd_g_dose', 'Dose chlorine', 'chlorine', 'str', ['wd_dose_build'], 'dose', 5, width=3,
        bg='#16a085')
 func('wd_dose_build', 'Build dose command',
-     "const pump = msg.payload;\n"
-     "const ml = pump === 'alum' ? (flow.get('alum_ml') ?? 3) : (flow.get('chlorine_ml') ?? 0.6);\n"
-     "msg.payload = JSON.stringify({pump: pump, ml: ml});\nreturn msg;", 1, [['wd_dose_out']], 'dose')
-button('wd_btn_dose_stop', 'wd_g_dose', 'Stop dosing', 'stop', 'str', ['wd_dose_out'], 'dose', 5, width=6)
+     "msg.payload = JSON.stringify({pump: 'chlorine', ml: flow.get('chlorine_ml') ?? 1.1});\nreturn msg;",
+     1, [['wd_dose_out']], 'dose')
+button('wd_btn_dose_stop', 'wd_g_dose', 'Stop dosing', 'stop', 'str', ['wd_dose_out'], 'dose', 6, width=6)
 mqtt_in('wd_dose_in', 'rover/dosing/status', ['wd_dose_fmt'], 'dose')
 func('wd_dose_fmt', 'Dosing totals',
      "const s = msg.payload || {};\n"
-     "return [{payload: `${Number(s.alum_total_ml||0).toFixed(2)} mL ${s.alum_on ? '(dosing)' : ''}`},\n"
-     "        {payload: `${Number(s.chlorine_total_ml||0).toFixed(2)} mL ${s.chlorine_on ? '(dosing)' : ''}`},\n"
-     "        {payload: Number(s.alum_stock_ml||0)}, {payload: Number(s.chlorine_stock_ml||0)}];", 4,
-     [['wd_alum_tot'], ['wd_cl_tot'], ['wd_alum_stock'], ['wd_cl_stock']], 'dose')
-text('wd_alum_tot', 'wd_g_dose', 'Total alum injected', 6, 'dose')
+     "return [{payload: `${Number(s.chlorine_total_ml||0).toFixed(2)} mL ${s.chlorine_on ? '(dosing)' : ''}`},\n"
+     "        {payload: Number(s.chlorine_stock_ml||0)}];", 2,
+     [['wd_cl_tot'], ['wd_cl_stock']], 'dose')
 text('wd_cl_tot', 'wd_g_dose', 'Total chlorine injected', 7, 'dose')
-gauge('wd_alum_stock', 'wd_g_dose', 'Alum stock', 'mL', 0, 250, 8, 'dose', seg=('25', '75'))
-gauge('wd_cl_stock', 'wd_g_dose', 'Chlorine stock', 'mL', 0, 250, 9, 'dose', seg=('25', '75'))
+gauge('wd_cl_stock', 'wd_g_dose', 'Chlorine stock', 'mL', 0, 250, 8, 'dose', seg=('25', '75'))
 
 # ======================================================================= Arm (#6)
 mqtt_out('wd_arm_out', 'rover/arm/cmd', 'arm')
-button('wd_btn_ext', 'wd_g_arm', 'Extend Arm', 'EXTEND', 'str', ['wd_arm_out'], 'arm', 1, width=3, icon='call_made')
-button('wd_btn_ret', 'wd_g_arm', 'Retract Arm', 'RETRACT', 'str', ['wd_arm_out'], 'arm', 2, width=3,
-       icon='call_received')
-slider('wd_arm_slider', 'wd_g_arm', 'Arm angle (0 stow - 90 deploy)', 0, 90, 3, 'arm', ['wd_arm_angle'])
-func('wd_arm_angle', 'ANGLE:n', "let a = Math.max(0, Math.min(90, Math.round(Number(msg.payload))));\n"
+button('wd_btn_ext', 'wd_g_arm', 'Lower intake', 'EXTEND', 'str', ['wd_arm_out'], 'arm', 1, width=3, icon='south')
+button('wd_btn_ret', 'wd_g_arm', 'Raise intake', 'RETRACT', 'str', ['wd_arm_out'], 'arm', 2, width=3,
+       icon='north')
+slider('wd_arm_slider', 'wd_g_arm', 'Intake angle (0 raised - 45 in the water)', 0, 45, 3, 'arm', ['wd_arm_angle'])
+func('wd_arm_angle', 'ANGLE:n', "let a = Math.max(0, Math.min(45, Math.round(Number(msg.payload))));\n"
      "if (!Number.isFinite(a)) return null;\nmsg.payload = 'ANGLE:' + a;\nreturn msg;", 1, [['wd_arm_out']], 'arm')
 mqtt_in('wd_arm_in', 'rover/arm/status', ['wd_arm_fmt'], 'arm')
 func('wd_arm_fmt', 'Arm status', "const s = msg.payload || {};\n"
-     "return [{payload: Number(s.angle||0)}, {payload: s.deployed ? 'DEPLOYED' : (s.stowed ? 'STOWED' : (s.moving ? 'MOVING' : 'HOLD'))}];",
+     "return [{payload: Number(s.angle||0)}, {payload: s.deployed ? 'IN THE WATER' : (s.stowed ? 'RAISED (safe to drive)' : (s.moving ? 'MOVING' : 'HOLD'))}];",
      2, [['wd_arm_gauge'], ['wd_arm_txt']], 'arm')
-gauge('wd_arm_gauge', 'wd_g_arm', 'Arm angle', 'deg', 0, 90, 4, 'arm', seg=('30', '80'),
+gauge('wd_arm_gauge', 'wd_g_arm', 'Intake angle', 'deg', 0, 45, 4, 'arm', seg=('15', '40'),
       colors=['#7f8c8d', '#e6a23c', '#2ecc71'])
-text('wd_arm_txt', 'wd_g_arm', 'Arm', 5, 'arm', width=3)
+text('wd_arm_txt', 'wd_g_arm', 'Intake', 5, 'arm', width=3)
 
 # ======================================================================= Delivery (#8)
 mqtt_out('wd_deliv_out', 'rover/delivery/cmd', 'deliv')
-numeric('wd_num_deliv', 'wd_g_deliv', 'Volume mL', 50, 1000, 50, 1, 'deliv', ['wd_deliv_store'], 'ml')
+numeric('wd_num_deliv', 'wd_g_deliv', 'Volume mL', 20, 400, 10, 1, 'deliv', ['wd_deliv_store'], 'ml')
 func('wd_deliv_store', 'store volume', "flow.set('deliv_ml', Number(msg.payload));\nreturn null;", 1, [[]], 'deliv')
 button('wd_btn_deliv', 'wd_g_deliv', 'Deliver', 'go', 'str', ['wd_deliv_build'], 'deliv', 2, width=3, bg='#2980b9')
 func('wd_deliv_build', 'Build delivery command',
-     "msg.payload = JSON.stringify({ml: flow.get('deliv_ml') ?? 300});\nreturn msg;", 1, [['wd_deliv_out']], 'deliv')
+     "msg.payload = JSON.stringify({ml: flow.get('deliv_ml') ?? 120});\nreturn msg;", 1, [['wd_deliv_out']], 'deliv')
 button('wd_btn_deliv_stop', 'wd_g_deliv', 'Stop delivery', 'stop', 'str', ['wd_deliv_out'], 'deliv', 3, width=6)
 mqtt_in('wd_deliv_in', 'rover/delivery/status', ['wd_deliv_fmt'], 'deliv')
 func('wd_deliv_fmt', 'Delivery status', "const s = msg.payload || {};\n"
      "return [{payload: Number(s.clean_ml||0)}, {payload: `${s.deliveries||0} deliveries . ${Number(s.delivered_total_ml||0).toFixed(0)} mL total . ${s.state || (s.pump ? 'PUMPING' : 'idle')}${s.reason ? ' (' + s.reason + ')' : ''}`}];",
      2, [['wd_clean_gauge'], ['wd_deliv_txt']], 'deliv')
-gauge('wd_clean_gauge', 'wd_g_deliv', 'Clean water on board', 'mL', 0, 1000, 4, 'deliv', seg=('100', '300'))
+gauge('wd_clean_gauge', 'wd_g_deliv', 'Clean water on board', 'mL', 0, 400, 4, 'deliv', seg=('40', '120'))
 text('wd_deliv_txt', 'wd_g_deliv', 'Delivery', 5, 'deliv')
-add({'id': 'wd_deliv_note', 'type': 'comment', 'z': TAB, 'name': 'Delivery pump only runs with the arm deployed',
-     'info': 'Interlock in firmware (DeliveryController) and in the sim (water_processor).', **pos(3, 'deliv'),
+add({'id': 'wd_deliv_note', 'type': 'comment', 'z': TAB, 'name': 'Fixed nozzle: park the container under it',
+     'info': 'The servo moves the intake, not the outlet. The intake pump only runs with the intake lowered; the rover only drives with it raised.', **pos(3, 'deliv'),
      'wires': []})
 
 # ======================================================================= Drive (#9)
@@ -292,8 +296,23 @@ func('wd_drive_fmt', 'Drive status', "const s = msg.payload || {};\n"
      1, [['wd_drive_txt']], 'drive')
 text('wd_drive_txt', 'wd_g_drive', 'Motors', 10, 'drive', width=4)
 
+# ======================================================================= Fixed route (#7)
+mqtt_out('wd_nav_out', 'rover/nav/cmd', 'route')
+for i, (lbl, p, bg) in enumerate([('Auto route', 'auto', '#27ae60'), ('Manual (D-pad)', 'manual', ''),
+                                   ('Pose = depot', 'reset', ''), ('Calibrate: 5 s forward', 'calib_forward', '#2980b9'),
+                                   ('Calibrate: 5 s pivot', 'calib_turn', '#2980b9')]):
+    button(f'wd_btn_nav{i}', 'wd_g_route', lbl, p, 'str', ['wd_nav_out'], 'route', 1 + i, width=2 if i < 3 else 4, bg=bg)
+add({'id': 'wd_nav_note', 'type': 'comment', 'z': TAB, 'name': 'Calibrate: measure metres / 5 and degrees / 5',
+     'info': 'Put NAV_SPEED_MPS and NAV_TURN_DPS in waterdroid_esp32.ino. Re-calibrate on the real ground and after '
+             'charging the power bank. "Arrived" buttons on the Mission tab also re-sync the estimated position.',
+     **pos(3, 'route'), 'wires': []})
+func('wd_nav_fmt', 'Route status', "const s = msg.payload || {};\n"
+     "msg.payload = s.phase ? `${s.auto === false ? 'MANUAL' : 'AUTO'} . ${s.phase} . next ${s.next || '-'}${s.leg_left !== undefined ? ' . ' + Number(s.leg_left).toFixed(2) + ' left' : ''}` : 'simulation (ground truth)';\nreturn msg;",
+     1, [['wd_nav_txt']], 'route')
+text('wd_nav_txt', 'wd_g_route', 'Route', 7, 'route', width=4)
+
 # ======================================================================= Map (#7)
-mqtt_in('wd_pose_in', 'rover/nav/pose', ['wd_map'], 'map')
+mqtt_in('wd_pose_in', 'rover/nav/pose', ['wd_map', 'wd_nav_fmt'], 'map')
 template('wd_map', 'wd_g_map', 'Village map',
          '<svg viewBox="-6 -8 20 16" style="width:100%;height:320px;background:#e8f1e4;border-radius:8px">\n'
          ' <g transform="scale(1,-1)">\n'
@@ -302,13 +321,15 @@ template('wd_map', 'wd_g_map', 'Village map',
          '  <rect x="-0.4" y="-0.4" width="0.8" height="0.8" fill="#555"/>\n'
          '  <rect x="5.5" y="2.5" width="1" height="1" fill="#e67e22"/><rect x="5.5" y="-3.5" width="1" height="1" fill="#e67e22"/>\n'
          '  <rect x="-3.5" y="-3.5" width="1" height="1" fill="#e67e22"/>\n'
+         '  <polyline points="0,0 9.6,0 9,0 6,3 6,-3 -3,-3.5 0,0" fill="none" stroke="#7f8c8d" stroke-width="0.06" stroke-dasharray="0.3,0.2"/>\n'
          '  <circle ng-if="msg.payload.target" ng-attr-cx="{{msg.payload.target[0]}}" ng-attr-cy="{{msg.payload.target[1]}}" r="0.35" fill="none" stroke="#c0392b" stroke-width="0.1"/>\n'
          '  <g ng-attr-transform="translate({{msg.payload.x||0}},{{msg.payload.y||0}}) rotate({{(msg.payload.yaw||0)*57.2958}})">\n'
          '   <rect x="-0.3" y="-0.2" width="0.6" height="0.4" fill="#2c3e50"/><polygon points="0.3,0.15 0.5,0 0.3,-0.15" fill="#f1c40f"/>\n'
          '  </g>\n </g>\n</svg>\n'
          '<div style="font-size:12px">x {{msg.payload.x}} m . y {{msg.payload.y}} m . target {{msg.payload.target || "-"}}'
          ' &nbsp; <span style="color:#3a86ff">river</span> . <span style="color:#e67e22">offload bays</span> . depot (0,0)</div>\n'
-         '<div style="font-size:11px;color:#888">Live pose comes from the Gazebo sim (rover/nav/pose). On the real rover this needs the Issue #7 GPS/compass.</div>',
+         '<div style="font-size:11px;color:#888">Dashed line = fixed route. On the rover the position is an ESTIMATE (dead reckoning, no GPS yet) - '
+         'press the Mission tab "Arrived" buttons to re-sync it at a stop.</div>',
          1, 'map', width=8, height=8)
 
 # ======================================================================= Power (#10)
@@ -318,7 +339,7 @@ for i, (lbl, p, bg) in enumerate([('Active', 'active', '#27ae60'), ('Sleep', 'sl
     button(f'wd_btn_p{i}', 'wd_g_power', lbl, p, 'str', ['wd_power_out'], 'power', 2 + i, width=3, bg=bg)
 mqtt_in('wd_power_in', 'rover/power/status', ['wd_power_fmt'], 'power')
 func('wd_power_fmt', 'Power status',
-     "const s = msg.payload || {};\nconst names = ['Intake','Alum','Chlorine','Delivery'];\n"
+     "const s = msg.payload || {};\nconst names = ['Intake','Transfer','Chlorine','Delivery'];\n"
      "const ch = (s.ch || []).map((on, i) => names[i] + (on ? ' ON' : ' off')).join(' . ');\n"
      "return [{payload: Number(s.rail_v || 0)}, {payload: `${s.mode || '?'} . rail ${s.rail || '?'}${s.fault ? ' . ' + s.fault : ''}`}, {payload: ch}];",
      3, [['wd_batt_gauge'], ['wd_power_txt'], ['wd_relay_txt']], 'power')

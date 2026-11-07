@@ -81,7 +81,7 @@ node {
 
 # ----------------------------------------------------------------- Issue #3
 NODES['dosing-pump'] = dict(
-    desc='Issue #3 peristaltic dosing pump (alum or chlorine): DOSE injects ML millilitres by running the '
+    desc='Issue #3 volumetric pump: the chlorine dosing pump, and also the TRANSFER pump (column -> delivery tank, RATE ~8). DOSE moves ML millilitres by running the '
          'pump for ML / RATE seconds (2 s = 2 mL at 1 mL/s). Only real relay-ON time (RON) counts. '
          'TOT = total injected mL for the dashboard.',
     inputs=[('DOSE', 'p', None), ('ML', 'n', '2'), ('ABRT', 'p', None), ('RATE', 'n', '1', 'pump mL/s (calibrate)'),
@@ -135,10 +135,10 @@ node {
 
 # ----------------------------------------------------------------- Issue #6
 NODES['servo-arm'] = dict(
-    desc='Issue #6 SG90 delivery arm with smooth interpolation (1 deg / 20 ms). Stow = 0 deg, deploy = 90 deg. '
+    desc='Issue #6 SG90 servo INTAKE boom with smooth interpolation (1 deg / 20 ms). Raised = 0 deg (start point), in the water = 45 deg. '
          'Connect VAL (0-1 = 0-180 deg) to xod-dev/servo/rotate-servo (or ANG in degrees). '
-         'FRZ = e-stop: hold position.',
-    inputs=[('EXT', 'p', None, 'Extend Arm'), ('RET', 'p', None, 'Retract Arm'), ('ANG', 'n', '45', 'slider 0-90'),
+         'FRZ = e-stop: hold position. DEP -> mission DEP and NOT DEP -> intake BLK; NOT STW -> drive INH.',
+    inputs=[('EXT', 'p', None, 'Lower intake'), ('RET', 'p', None, 'Raise intake'), ('ANG', 'n', '20', 'slider 0-45'),
             ('SET', 'p', None, 'go to ANG'), ('FRZ', 'b', 'False')],
     outputs=[('ANGO', 'n', 'current angle deg'), ('VAL', 'n', 'servo value 0-1'), ('DEP', 'b'), ('STW', 'b')],
     cpp=core('motion_cores.h') + '''
@@ -161,12 +161,12 @@ node {
 
 # ----------------------------------------------------------------- Issue #8
 NODES['delivery-controller'] = dict(
-    desc='Issue #8 delivery pump (Stage 3 -> homestead container). REQ starts an ML delivery that only '
-         'pumps while HOME (arrived at homestead) AND ARM (arm deployed, from servo-arm DEP) are true; '
-         'stops at the volume, when the arm moves away or Stage 3 (S3 %) is nearly empty. '
+    desc='Issue #8 delivery pump (Stage 3 -> fixed nozzle -> homestead container). REQ starts an ML delivery that '
+         'only pumps while HOME (arrived at homestead) is true; leave ARM = true (the nozzle is fixed). '
+         'Stops at the volume or when Stage 3 (S3 %) is nearly empty. '
          'ST: 0 idle 1 waiting for arm 2 pumping 3 done 4 aborted.',
-    inputs=[('REQ', 'p', None), ('ML', 'n', '300'), ('ABRT', 'p', None), ('HOME', 'b', 'False'),
-            ('ARM', 'b', 'False'), ('S3', 'n', '0'), ('FLOW', 'n', '25', 'pump mL/s (calibrate)'),
+    inputs=[('REQ', 'p', None), ('ML', 'n', '120'), ('ABRT', 'p', None), ('HOME', 'b', 'False'),
+            ('ARM', 'b', 'True', 'fixed nozzle: leave true'), ('S3', 'n', '0'), ('FLOW', 'n', '25', 'pump mL/s (calibrate)'),
             ('RON', 'b', 'False', 'relay CH4 actually ON')],
     outputs=[('WANT', 'b'), ('ST', 'n'), ('DLV', 'n', 'mL this delivery'), ('TOT', 'n'), ('DONE', 'p')],
     cpp=core('pump_cores.h') + '''
@@ -224,16 +224,16 @@ node {
 NODES['mission-fsm'] = dict(
     desc='Issue #11 central state machine: Navigating -> Pumping -> Dosing -> Delivering. Arrival pulses come '
          'from navigation (Issue #7), the ROS 2 sim or dashboard buttons. Outputs one-shot pulses that drive '
-         'the subsystem nodes, and DRV=false inhibits the motors while pumps run. SID matches the Node-RED '
+         'the subsystem nodes (TRF/TRML -> a dosing-pump node used as the transfer pump), and DRV=false inhibits the motors while pumps run. SID matches the Node-RED '
          'serial bridge: 0 IDLE 1 NAV_RIVER 2 INTAKE_DOSE 3 NAV_HOMESTEAD 4 DELIVER_WATER 5 EMERGENCY_STOP. '
          'ST = detailed state 0-10 (STATE_IDLE ... STATE_EMERGENCY_STOP).',
     inputs=[('STRT', 'p', None), ('PAUS', 'p', None), ('RSUM', 'p', None), ('ABRT', 'p', None),
             ('ESTP', 'b', 'False'), ('ARIV', 'p', None, 'arrived at river'), ('AHOM', 'p', None, 'arrived at homestead'),
-            ('ADEP', 'p', None, 'arrived at depot'), ('INB', 'b', 'False', 'intake busy'), ('ALB', 'b', 'False', 'alum busy'),
-            ('CLB', 'b', 'False', 'chlorine busy'), ('S1', 'n', '0'), ('S2', 'n', '0'), ('DEP', 'b', 'False', 'arm deployed'),
-            ('STW', 'b', 'True', 'arm stowed'), ('DLB', 'b', 'False', 'delivery busy'), ('CML', 'n', '0', 'Stage 3 mL'),
+            ('ADEP', 'p', None, 'arrived at depot'), ('INB', 'b', 'False', 'intake busy'), ('TRB', 'b', 'False', 'transfer pump busy'),
+            ('CLB', 'b', 'False', 'chlorine busy'), ('S1', 'n', '0'), ('S2', 'n', '0'), ('COL', 'n', '0', 'column mL (volume-model)'), ('DEP', 'b', 'False', 'intake lowered'),
+            ('STW', 'b', 'True', 'intake raised'), ('DLB', 'b', 'False', 'delivery busy'), ('CML', 'n', '0', 'Stage 3 mL'),
             ('HOMS', 'n', '3', 'homesteads per trip'), ('CNT', 'n', '1800', 'chlorine contact s')],
-    outputs=[('ST', 'n'), ('SID', 'n'), ('DRV', 'b', 'motors allowed'), ('INTK', 'p'), ('ALUM', 'p'), ('ALML', 'n'),
+    outputs=[('ST', 'n'), ('SID', 'n'), ('DRV', 'b', 'motors allowed'), ('INTK', 'p'), ('TRF', 'p', 'run transfer pump'), ('TRML', 'n'),
              ('CHLR', 'p'), ('CLML', 'n'), ('EXT', 'p'), ('RET', 'p'), ('DLV', 'p'), ('DLML', 'n'), ('STOP', 'p')],
     cpp=core('mission_core.h') + '''
 node {
@@ -252,7 +252,8 @@ node {
         if (isInputDirty<input_ADEP>(ctx)) m.arrivedDepot(now);
         MissionInputs in;
         in.intakeBusy = getValue<input_INB>(ctx);
-        in.alumBusy = getValue<input_ALB>(ctx);
+        in.transferBusy = getValue<input_TRB>(ctx);
+        in.columnMl = getValue<input_COL>(ctx);
         in.chlorineBusy = getValue<input_CLB>(ctx);
         in.s1Pct = getValue<input_S1>(ctx);
         in.s2Pct = getValue<input_S2>(ctx);
@@ -264,7 +265,7 @@ node {
         MissionActions& a = m.act;
         if (a.stopAll) emitValue<output_STOP>(ctx, 1);
         if (a.startIntake) emitValue<output_INTK>(ctx, 1);
-        if (a.doseAlumMl > 0) { emitValue<output_ALML>(ctx, a.doseAlumMl); emitValue<output_ALUM>(ctx, 1); }
+        if (a.transferMl > 0) { emitValue<output_TRML>(ctx, a.transferMl); emitValue<output_TRF>(ctx, 1); }
         if (a.doseChlorineMl > 0) { emitValue<output_CLML>(ctx, a.doseChlorineMl); emitValue<output_CHLR>(ctx, 1); }
         if (a.armExtend) emitValue<output_EXT>(ctx, 1);
         if (a.armRetract) emitValue<output_RET>(ctx, 1);
@@ -283,7 +284,7 @@ NODES['telemetry-json'] = dict(
     desc='Issue #12 formats the rover telemetry into one JSON frame (same keys as the ESP32 sketch publishes '
          'on rover/telemetry). Send OUT over xod-dev/esp32 MQTT/HTTP or a serial line to Node-RED on every UPD.',
     inputs=[('UPD', 'p', 'Continuously'), ('SID', 'n', '0'), ('BATT', 'n', '5'), ('S1', 'n', '0'), ('S2', 'n', '0'),
-            ('S3', 'n', '0'), ('ARM', 'n', '0'), ('ALUM', 'n', '0'), ('CHLR', 'n', '0'), ('DLV', 'n', '0'),
+            ('S3', 'n', '0'), ('ARM', 'n', '0'), ('TRF', 'n', '0', 'transferred mL'), ('CHLR', 'n', '0'), ('DLV', 'n', '0'),
             ('HLTH', 'n', '0'), ('ESTP', 'b', 'False')],
     outputs=[('OUT', 's'), ('SENT', 'p')],
     cpp='''// Issue #12 - telemetry JSON frame for Node-RED (keys match rover/telemetry from waterdroid_esp32.ino)
@@ -300,13 +301,123 @@ node {
         if (h < 0 || h > 5) h = 0;
         snprintf(buf, sizeof(buf),
                  "{\\"state_id\\":%d,\\"battery_v\\":%.2f,\\"s1\\":%.1f,\\"s2\\":%.1f,\\"s3\\":%.1f,\\"arm\\":%d,"
-                 "\\"alum_ml\\":%.2f,\\"chlorine_ml\\":%.2f,\\"delivered_ml\\":%.0f,\\"health\\":\\"%s\\",\\"estop\\":%s}",
+                 "\\"transfer_ml\\":%.0f,\\"chlorine_ml\\":%.2f,\\"delivered_ml\\":%.0f,\\"health\\":\\"%s\\",\\"estop\\":%s}",
                  (int)getValue<input_SID>(ctx), getValue<input_BATT>(ctx), getValue<input_S1>(ctx),
                  getValue<input_S2>(ctx), getValue<input_S3>(ctx), (int)getValue<input_ARM>(ctx),
-                 getValue<input_ALUM>(ctx), getValue<input_CHLR>(ctx), getValue<input_DLV>(ctx),
+                 getValue<input_TRF>(ctx), getValue<input_CHLR>(ctx), getValue<input_DLV>(ctx),
                  TJ_HEALTH[h], getValue<input_ESTP>(ctx) ? "true" : "false");
         emitValue<output_OUT>(ctx, XString(&view));
         emitValue<output_SENT>(ctx, 1);
+    }
+}
+''')
+
+# ----------------------------------------------------------------- flow sensor (#1 / #5)
+NODES['flow-meter'] = dict(
+    desc='Water-flow sensor YF-S401 (hall turbine, ~5880 pulses/L, 0.3-6 L/min) on the intake line. '
+         'Counts pulses on PORT by interrupt. TOT = mL since boot, BAT = mL since RST (use as the intake '
+         'fill), RATE = mL/s, DRY = no pulse for DRYT seconds (pump on + DRY = dry run / blocked hose).',
+    inputs=[('PORT', 'n', '34'), ('PPL', 'n', '5880', 'pulses per litre: YF-S401 ~5880 (calibrate with 1 L)'),
+            ('RST', 'p', None, 'reset the batch counter'), ('DRYT', 'n', '4')],
+    outputs=[('TOT', 'n'), ('BAT', 'n'), ('RATE', 'n'), ('DRY', 'b')],
+    cpp=core('nav_cores.h') + '''
+static volatile uint32_t wd_flowPulses = 0;
+static void wd_onFlowPulse() { wd_flowPulses++; }
+
+node {
+    FlowMeter f;
+    bool attached = false;
+    void evaluate(Context ctx) {
+        if (!attached) {
+            int port = (int)getValue<input_PORT>(ctx);
+            pinMode(port, INPUT);
+            attachInterrupt(digitalPinToInterrupt(port), wd_onFlowPulse, FALLING);
+            attached = true;
+        }
+        f.pulsesPerLitre = getValue<input_PPL>(ctx);
+        if (isInputDirty<input_RST>(ctx)) f.resetBatch();
+        uint32_t now = millis();
+        f.tick(now, wd_flowPulses);
+        emitValue<output_TOT>(ctx, f.totalMl);
+        emitValue<output_BAT>(ctx, f.batchMl);
+        emitValue<output_RATE>(ctx, f.rateMlPerS);
+        emitValue<output_DRY>(ctx, f.noFlowFor(now, (uint32_t)(getValue<input_DRYT>(ctx) * 1000)));
+        setTimeout(ctx, 50);
+    }
+}
+''')
+
+# ----------------------------------------------------------------- volume model (#5 / #8)
+NODES['volume-model'] = dict(
+    desc='Estimated tank volumes without level sensors: IN = intake mL (flow-meter TOT), TR = transfer-pump mL (column -> delivery tank), '
+         'CL = chlorine mL, OUT = delivered mL (all running totals). Gravity flow Stage 1 -> column -> Stage 3 '
+         'at FILT mL/s (calibrate: time 500 mL through the column). S1/S2/S3 in % feed the level-monitor '
+         'and mission-fsm; COL = column mL -> mission COL; FLTR = water still filtering.',
+    inputs=[('IN', 'n', '0'), ('TR', 'n', '0', 'transfer pump total mL'), ('CL', 'n', '0'), ('OUT', 'n', '0'), ('FILT', 'n', '3'),
+            ('RST', 'p', None, 'tanks emptied by hand')],
+    outputs=[('S1', 'n'), ('S2', 'n'), ('S3', 'n'), ('CML', 'n', 'Stage 3 mL'), ('COL', 'n', 'column mL'), ('FLTR', 'b')],
+    cpp=core('nav_cores.h') + '''
+node {
+    VolumeModel v;
+    Number li = 0, lt = 0, lc = 0, lo = 0;
+    bool first = true;
+    void evaluate(Context ctx) {
+        Number i = getValue<input_IN>(ctx), tr = getValue<input_TR>(ctx), c = getValue<input_CL>(ctx), o = getValue<input_OUT>(ctx);
+        if (first || isInputDirty<input_RST>(ctx)) { v.reset(); li = i; lt = tr; lc = c; lo = o; first = false; }
+        v.filterMlPerS = getValue<input_FILT>(ctx);
+        v.drainMlPerS = 0;
+        v.addRaw(i - li); v.moveColumnToClean(tr - lt); v.addClean(c - lc); v.removeClean(o - lo);
+        li = i; lt = tr; lc = c; lo = o;
+        v.tick(millis());
+        emitValue<output_S1>(ctx, v.rawPct());
+        emitValue<output_S2>(ctx, v.columnPct());
+        emitValue<output_S3>(ctx, v.cleanPct());
+        emitValue<output_CML>(ctx, v.cleanMl);
+        emitValue<output_COL>(ctx, v.columnMl);
+        emitValue<output_FLTR>(ctx, v.filtering());
+        setTimeout(ctx, 100);
+    }
+}
+''')
+
+# ----------------------------------------------------------------- fixed route (#7)
+NODES['route-navigator'] = dict(
+    desc='Issue #7 without GPS/compass: follows the fixed route in nav_cores.h (river, reverse, 3 homesteads, '
+         'depot) by dead reckoning. GO = mission travelling (mission-fsm DRV and state is en-route). Pivot to '
+         'face the next point, then drive straight. L/R (-1..1) go to l298n-drive with UPD every evaluation. '
+         'Pulses RIV / HOM / DEP go to mission-fsm ARIV / AHOM / ADEP. SPD = m/s and TRN = deg/s at the drive '
+         'duties (calibrate on your ground). EXEC = 1 when the drive is really moving (0 while inhibited).',
+    inputs=[('GO', 'b', 'False'), ('EXEC', 'n', '1'), ('SPD', 'n', '0.3'), ('TRN', 'n', '90'),
+            ('RST', 'p', None, 'at the depot facing the river'), ('SRIV', 'p', None, 'operator: at river'),
+            ('SHOM', 'p', None, 'operator: at homestead'), ('SDEP', 'p', None, 'operator: at depot')],
+    outputs=[('L', 'n'), ('R', 'n'), ('UPD', 'p'), ('RIV', 'p'), ('HOM', 'p'), ('DEP', 'p'),
+             ('X', 'n'), ('Y', 'n'), ('YAW', 'n')],
+    cpp=core('nav_cores.h') + '''
+node {
+    RouteNavigator n;
+    void evaluate(Context ctx) {
+        n.speedMps = getValue<input_SPD>(ctx);
+        n.turnDegPerS = getValue<input_TRN>(ctx);
+        if (isInputDirty<input_RST>(ctx)) n.reset();
+        if (isInputDirty<input_SRIV>(ctx)) n.syncTo(RA_RIVER);
+        if (isInputDirty<input_SHOM>(ctx)) n.syncTo(RA_HOME);
+        if (isInputDirty<input_SDEP>(ctx)) n.syncTo(RA_DEPOT);
+        n.tick(millis(), getValue<input_EXEC>(ctx));
+        if (getValue<input_GO>(ctx)) n.go(); else n.halt();
+        if (n.event == RA_RIVER) emitValue<output_RIV>(ctx, 1);
+        if (n.event == RA_HOME) emitValue<output_HOM>(ctx, 1);
+        if (n.event == RA_DEPOT) emitValue<output_DEP>(ctx, 1);
+        n.event = RA_NONE;
+        Number l = 0, r = 0;
+        if (n.cmd == 1) { l = r = 0.784; } else if (n.cmd == -1) { l = r = -0.784; }   // = drive cruise 200/255
+        else if (n.cmd == 2) { l = -0.67; r = 0.67; } else if (n.cmd == -2) { l = 0.67; r = -0.67; }
+        emitValue<output_L>(ctx, l);
+        emitValue<output_R>(ctx, r);
+        emitValue<output_UPD>(ctx, 1);
+        emitValue<output_X>(ctx, n.x);
+        emitValue<output_Y>(ctx, n.y);
+        emitValue<output_YAW>(ctx, n.yaw);
+        setTimeout(ctx, 20);
     }
 }
 ''')

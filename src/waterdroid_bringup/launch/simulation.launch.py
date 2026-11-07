@@ -8,6 +8,8 @@
 Arguments
   world    world file inside waterdroid_gazebo/worlds  (default v2_village.sdf)
   mission  gt   = mission_navigator_gt (ground truth, full pump/dose/arm cycle)  [default]
+           route = same fixed route by dead reckoning from /cmd_vel only, like the real rover
+                   without GPS/compass; logs the drift against ground truth at every stop
            odom = mission_navigator (wheel odometry, waypoint pauses only)
            none = no autonomous mission (teleop / manual testing)
   mqtt     true = status_monitor mirrors telemetry onto the Node-RED MQTT topics
@@ -44,7 +46,7 @@ def generate_launch_description():
 
     args = [
         DeclareLaunchArgument('world', default_value='v2_village.sdf'),
-        DeclareLaunchArgument('mission', default_value='gt', choices=['gt', 'odom', 'none']),
+        DeclareLaunchArgument('mission', default_value='gt', choices=['gt', 'route', 'odom', 'none']),
         DeclareLaunchArgument('mqtt', default_value='false'),
         DeclareLaunchArgument('rviz', default_value='false'),
         DeclareLaunchArgument('gui', default_value='true', description='false = headless Gazebo server only'),
@@ -100,6 +102,11 @@ def generate_launch_description():
     mission_gt = Node(package='waterdroid_control', executable='mission_navigator_gt',
                       name='mission_navigator', output='screen', parameters=[params],
                       condition=IfCondition(EqualsSubstitution(LaunchConfiguration('mission'), 'gt')))
+    # 'route' = same fixed route, but dead reckoning like the real rover (no GPS / compass)
+    mission_route = Node(package='waterdroid_control', executable='mission_navigator_gt',
+                         name='mission_navigator', output='screen',
+                         parameters=[params, {'pose_source': 'dead_reckoning'}],
+                         condition=IfCondition(EqualsSubstitution(LaunchConfiguration('mission'), 'route')))
     mission_odom = Node(package='waterdroid_control', executable='mission_navigator',
                         name='mission_navigator', output='screen',
                         parameters=[params, {'use_sim_time': True}],
@@ -111,5 +118,5 @@ def generate_launch_description():
     return LaunchDescription(args + [
         gazebo, robot_state_publisher, spawn_robot, bridge,
         water_processor, arm_controller, status_monitor,
-        mission_gt, mission_odom, rviz,
+        mission_gt, mission_route, mission_odom, rviz,
     ])

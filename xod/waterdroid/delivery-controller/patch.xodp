@@ -1,5 +1,5 @@
 {
-  "description": "Issue #8 delivery pump (Stage 3 -> homestead container). REQ starts an ML delivery that only pumps while HOME (arrived at homestead) AND ARM (arm deployed, from servo-arm DEP) are true; stops at the volume, when the arm moves away or Stage 3 (S3 %) is nearly empty. ST: 0 idle 1 waiting for arm 2 pumping 3 done 4 aborted.",
+  "description": "Issue #8 delivery pump (Stage 3 -> fixed nozzle -> homestead container). REQ starts an ML delivery that only pumps while HOME (arrived at homestead) is true; leave ARM = true (the nozzle is fixed). Stops at the volume or when Stage 3 (S3 %) is nearly empty. ST: 0 idle 1 waiting for arm 2 pumping 3 done 4 aborted.",
   "nodes": [
     {
       "id": "in00",
@@ -22,7 +22,7 @@
       },
       "label": "ML",
       "boundLiterals": {
-        "__out__": "300"
+        "__out__": "120"
       }
     },
     {
@@ -58,8 +58,9 @@
       },
       "label": "ARM",
       "boundLiterals": {
-        "__out__": "False"
-      }
+        "__out__": "True"
+      },
+      "description": "fixed nozzle: leave true"
     },
     {
       "id": "in05",

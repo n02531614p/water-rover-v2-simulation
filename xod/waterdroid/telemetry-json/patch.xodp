@@ -92,10 +92,11 @@
         "x": 714,
         "y": 0
       },
-      "label": "ALUM",
+      "label": "TRF",
       "boundLiterals": {
         "__out__": "0"
-      }
+      },
+      "description": "transferred mL"
     },
     {
       "id": "in08",

@@ -1,5 +1,5 @@
 {
-  "description": "Issue #6 SG90 delivery arm with smooth interpolation (1 deg / 20 ms). Stow = 0 deg, deploy = 90 deg. Connect VAL (0-1 = 0-180 deg) to xod-dev/servo/rotate-servo (or ANG in degrees). FRZ = e-stop: hold position.",
+  "description": "Issue #6 SG90 servo INTAKE boom with smooth interpolation (1 deg / 20 ms). Raised = 0 deg (start point), in the water = 45 deg. Connect VAL (0-1 = 0-180 deg) to xod-dev/servo/rotate-servo (or ANG in degrees). FRZ = e-stop: hold position. DEP -> mission DEP and NOT DEP -> intake BLK; NOT STW -> drive INH.",
   "nodes": [
     {
       "id": "in00",
@@ -12,7 +12,7 @@
       "boundLiterals": {
         "__out__": "Never"
       },
-      "description": "Extend Arm"
+      "description": "Lower intake"
     },
     {
       "id": "in01",
@@ -25,7 +25,7 @@
       "boundLiterals": {
         "__out__": "Never"
       },
-      "description": "Retract Arm"
+      "description": "Raise intake"
     },
     {
       "id": "in02",
@@ -36,9 +36,9 @@
       },
       "label": "ANG",
       "boundLiterals": {
-        "__out__": "45"
+        "__out__": "20"
       },
-      "description": "slider 0-90"
+      "description": "slider 0-45"
     },
     {
       "id": "in03",

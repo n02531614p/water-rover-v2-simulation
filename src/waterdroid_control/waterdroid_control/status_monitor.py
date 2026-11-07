@@ -13,9 +13,9 @@ so the Node-RED dashboard in node-red/ works unchanged against Gazebo.
 
   MQTT (when mqtt_enabled:=true and paho-mqtt is installed, see docs/TOPICS.md)
        out rover/telemetry, rover/state, rover/nav/pose, rover/intake/status,
-           rover/dosing/status, rover/filtration/status, rover/arm/status,
+           rover/dosing/status, rover/transfer/status, rover/filtration/status, rover/arm/status,
            rover/delivery/status, rover/drive/status, rover/power/status
-       in  rover/estop, rover/mission/cmd, rover/intake/cmd, rover/dosing/cmd,
+       in  rover/estop, rover/mission/cmd, rover/intake/cmd, rover/dosing/cmd, rover/transfer/cmd,
            rover/filtration/cmd, rover/arm/cmd, rover/delivery/cmd, rover/drive/cmd,
            rover/power/cmd
 """
@@ -36,7 +36,7 @@ except ImportError:          # bridge is optional
     paho = None
 
 # Simulated current draw (mA) used for the battery estimate - see docs/HARDWARE.md
-LOAD_MA = {'base': 180, 'drive': 900, 'intake_pump': 350, 'alum_pump': 150,
+LOAD_MA = {'base': 180, 'drive': 900, 'intake_pump': 350, 'transfer_pump': 350,
            'chlorine_pump': 150, 'delivery_pump': 350, 'servo': 150}
 TELEOP_STATES = ('STATE_IDLE', 'STATE_PAUSED', 'STATE_COMPLETE')
 
@@ -125,7 +125,7 @@ class StatusMonitor(Node):
         rail_v = round(5.08 - 0.00012 * ma - (0.25 if left < 5 else 0.0), 2)
         relays = self.proc.get('relays', {})
         ch = [int(bool(relays.get(k))) for k in
-              ('intake_pump', 'alum_pump', 'chlorine_pump', 'delivery_pump')]
+              ('intake_pump', 'transfer_pump', 'chlorine_pump', 'delivery_pump')]
         mode = 'EMERGENCY' if self.estop else self.power_mode
         return {
             'mode': mode, 'mode_id': {'ACTIVE': 0, 'SLEEP': 1, 'EMERGENCY': 2}[mode],
@@ -183,7 +183,7 @@ class StatusMonitor(Node):
             self.get_logger().error(f'MQTT connect failed: {e}')
 
     def _mqtt_on_connect(self, client, *_args):
-        for t in ('rover/estop', 'rover/mission/cmd', 'rover/intake/cmd', 'rover/dosing/cmd',
+        for t in ('rover/estop', 'rover/mission/cmd', 'rover/intake/cmd', 'rover/dosing/cmd', 'rover/transfer/cmd',
                   'rover/filtration/cmd', 'rover/arm/cmd', 'rover/delivery/cmd',
                   'rover/drive/cmd', 'rover/power/cmd'):
             client.subscribe(t)
@@ -203,10 +203,11 @@ class StatusMonitor(Node):
             'pump': pr.get('intake', False), 'level_pct': pr.get('s1', 0),
             'fault': pr.get('fault', ''), 'run_s': None})
         self._pub('rover/dosing/status', {
-            'alum_on': pr.get('relays', {}).get('alum_pump', False),
             'chlorine_on': pr.get('relays', {}).get('chlorine_pump', False),
-            'alum_total_ml': pr.get('alum_total_ml', 0), 'chlorine_total_ml': pr.get('chlorine_total_ml', 0),
-            'alum_stock_ml': pr.get('alum_stock_ml'), 'chlorine_stock_ml': pr.get('chlorine_stock_ml')})
+            'chlorine_total_ml': pr.get('chlorine_total_ml', 0), 'chlorine_stock_ml': pr.get('chlorine_stock_ml')})
+        self._pub('rover/transfer/status', {
+            'pump': pr.get('relays', {}).get('transfer_pump', False), 'total_ml': pr.get('transfer_total_ml', 0),
+            'column_ml': pr.get('s2_ml', 0), 'clean_ml': pr.get('s3_ml', 0)})
         self._pub('rover/filtration/status', {
             's1': pr.get('s1', 0), 's2': pr.get('s2', 0), 's3': pr.get('s3', 0),
             'intake': pr.get('intake', False), 'flow': 0.0, 'health': pr.get('health', 'HEALTHY')})
@@ -243,17 +244,25 @@ class StatusMonitor(Node):
         elif topic == 'rover/mission/cmd':
             self.mission_pub.publish(String(data=str(low)))
         elif topic == 'rover/intake/cmd':
-            self.proc_pub.publish(String(data='intake:start' if low in ('start', 'on', '1') else 'intake:stop'))
+            if low in ('start', 'on', '1'):
+                self.arm_pub.publish(String(data='EXTEND'))      # lower the servo intake first
+                self.proc_pub.publish(String(data='intake:start'))
+            else:
+                self.proc_pub.publish(String(data='intake:stop'))
         elif topic == 'rover/filtration/cmd':
             if low == 'pause':
                 self.proc_pub.publish(String(data='intake:stop'))
         elif topic == 'rover/dosing/cmd':
-            if isinstance(data, dict):
-                pump = 'dose_chlorine' if str(data.get('pump', '')).startswith('chlor') else 'dose_alum'
+            if isinstance(data, dict) and str(data.get('pump', '')).startswith('chlor'):
                 ml = data.get('ml')
-                self.proc_pub.publish(String(data=f'{pump}:{ml}' if ml is not None else pump))
+                self.proc_pub.publish(String(data=f'dose_chlorine:{ml}' if ml is not None else 'dose_chlorine'))
             elif low == 'stop':
                 self.proc_pub.publish(String(data='stop'))
+        elif topic == 'rover/transfer/cmd':
+            if isinstance(data, dict) and 'ml' in data:
+                self.proc_pub.publish(String(data=f"transfer:{data['ml']}"))
+            else:
+                self.proc_pub.publish(String(data='transfer:stop' if low == 'stop' else 'transfer'))
         elif topic == 'rover/arm/cmd':
             self.arm_pub.publish(String(data=str(data)))
         elif topic == 'rover/delivery/cmd':

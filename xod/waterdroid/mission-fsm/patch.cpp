@@ -25,19 +25,20 @@ enum MissionState : uint8_t {
 };
 
 struct MissionInputs {
-  bool  intakeBusy = false;     // IntakeController.want or PUMPING
-  bool  alumBusy = false, chlorineBusy = false;
+  bool  intakeBusy = false;     // batch not finished: intake requested (pumping OR paused by the column guard)
+  bool  transferBusy = false, chlorineBusy = false;
   float s1Pct = 0, s2Pct = 0;   // filtration levels
-  bool  armDeployed = false, armStowed = true;
+  float columnMl = 0;           // filtered water waiting in the column (estimate)
+  bool  armDeployed = false, armStowed = true;   // servo INTAKE boom (lowered into the river / raised)
   bool  deliveryBusy = false;
   float cleanMl = 0;            // Stage 3 volume estimate
 };
 
 struct MissionActions {          // one-shot requests, cleared by the caller after use
   bool  startIntake = false;
-  float doseAlumMl = 0;          // > 0 -> start an alum dose
+  float transferMl = 0;          // > 0 -> run the transfer pump (column -> delivery tank) for this volume
   float doseChlorineMl = 0;      // > 0 -> start a chlorine dose
-  bool  armExtend = false, armRetract = false;
+  bool  armExtend = false, armRetract = false;    // lower / raise the intake
   float deliverMl = 0;           // > 0 -> request a delivery
   bool  stopAll = false;
   void clear() { *this = MissionActions(); }
@@ -45,9 +46,9 @@ struct MissionActions {          // one-shot requests, cleared by the caller aft
 
 struct MissionConfig {
   uint8_t  homesteads = 3;
-  float    batchMl = 1000;        // Stage 1 / Stage 3 batch size
-  float    alumMlPerL = 3.0f;     // 1 % alum stock
-  float    chlorineMlPerL = 0.6f; // 0.35 % NaOCl stock
+  float    batchMl = 380;         // Stage 1 / Stage 3 batch (400 mL tanks)
+  float    transferMinMl = 20;    // run the transfer pump once this much has collected in the column
+  float    chlorineMlPerL = 3.0f; // 0.07 % NaOCl stock (bleach 1:50) -> ~2 mg/L
   uint32_t pumpTimeoutMs = 120000;
   uint32_t filterTimeoutMs = 600000;
   uint32_t contactMs = 30UL * 60UL * 1000UL;   // chlorine contact time (WHO: >= 30 min)
@@ -85,33 +86,38 @@ struct MissionCore {
   void tick(uint32_t now, const MissionInputs& in) {
     uint32_t el = now - t0;
     switch (state) {
-      case MS_PUMPING:
-        if (sub == 0) {
+      case MS_PUMPING:                       // servo lowers the intake, pump the batch, raise it again
+        if (sub == 0) { act.armExtend = true; sub = 1; t0 = now; }
+        else if (sub == 1 && (in.armDeployed || el > cfg.actionTimeoutMs)) {
           act.startIntake = true;
-          act.doseAlumMl = cfg.batchMl / 1000.0f * cfg.alumMlPerL;
-          sub = 1; t0 = now;
-        } else if (el > 1000 && ((!in.intakeBusy && !in.alumBusy) || el > cfg.pumpTimeoutMs)) {
+          sub = 2; t0 = now;
+        } else if (sub == 2 && !in.transferBusy && in.columnMl >= cfg.transferMinMl) {
+          act.transferMl = in.columnMl;      // keep the small column from overflowing while the intake runs
+        } else if (sub == 2 && el > 1000 && (!in.intakeBusy || el > cfg.pumpTimeoutMs)) {
+          act.armRetract = true; sub = 3; t0 = now;
+        } else if (sub == 3 && (in.armStowed || el > cfg.actionTimeoutMs)) {
           go(MS_FILTERING, now);
         }
         break;
-      case MS_FILTERING:
-        if ((in.s1Pct <= cfg.filterDoneS1 && in.s2Pct <= cfg.filterDoneS2) || el > cfg.filterTimeoutMs)
-          go(MS_DOSING_CHLORINE, now);
+      case MS_FILTERING: {                   // gravity Stage 1 -> column; transfer pump column -> delivery tank
+        bool rawEmpty = in.s1Pct <= cfg.filterDoneS1;
+        if (el > cfg.filterTimeoutMs) { go(MS_DOSING_CHLORINE, now); break; }
+        if (in.transferBusy || el < 500) break;
+        if (in.columnMl >= cfg.transferMinMl || (rawEmpty && in.columnMl > 2)) act.transferMl = in.columnMl;
+        else if (rawEmpty) go(MS_DOSING_CHLORINE, now);
         break;
+      }
       case MS_DOSING_CHLORINE:
         if (sub == 0) { act.doseChlorineMl = in.cleanMl / 1000.0f * cfg.chlorineMlPerL; sub = 1; t0 = now; }
         else if (sub == 1 && el > 500 && !in.chlorineBusy) { sub = 2; t0 = now; }
         else if (sub == 2 && el >= cfg.contactMs) { stop = 0; go(MS_EN_ROUTE_HOMESTEAD, now); }
         break;
-      case MS_DISPENSING:
-        if (sub == 0) { act.armExtend = true; sub = 1; t0 = now; }
-        else if (sub == 1 && (in.armDeployed || el > cfg.actionTimeoutMs)) {
+      case MS_DISPENSING:                    // fixed nozzle: share the clean water between the stops left
+        if (sub == 0) {
           uint8_t left = cfg.homesteads > stop ? cfg.homesteads - stop : 1;
           act.deliverMl = in.cleanMl / left;
-          sub = 2; t0 = now;
-        } else if (sub == 2 && el > 500 && (!in.deliveryBusy || el > cfg.actionTimeoutMs)) {
-          act.armRetract = true; sub = 3; t0 = now;
-        } else if (sub == 3 && (in.armStowed || el > cfg.actionTimeoutMs)) {
+          sub = 1; t0 = now;
+        } else if (sub == 1 && el > 500 && (!in.deliveryBusy || el > cfg.actionTimeoutMs)) {
           stop++;
           go(stop < cfg.homesteads ? MS_EN_ROUTE_HOMESTEAD : MS_RETURNING, now);
         }
@@ -167,7 +173,8 @@ node {
         if (isInputDirty<input_ADEP>(ctx)) m.arrivedDepot(now);
         MissionInputs in;
         in.intakeBusy = getValue<input_INB>(ctx);
-        in.alumBusy = getValue<input_ALB>(ctx);
+        in.transferBusy = getValue<input_TRB>(ctx);
+        in.columnMl = getValue<input_COL>(ctx);
         in.chlorineBusy = getValue<input_CLB>(ctx);
         in.s1Pct = getValue<input_S1>(ctx);
         in.s2Pct = getValue<input_S2>(ctx);
@@ -179,7 +186,7 @@ node {
         MissionActions& a = m.act;
         if (a.stopAll) emitValue<output_STOP>(ctx, 1);
         if (a.startIntake) emitValue<output_INTK>(ctx, 1);
-        if (a.doseAlumMl > 0) { emitValue<output_ALML>(ctx, a.doseAlumMl); emitValue<output_ALUM>(ctx, 1); }
+        if (a.transferMl > 0) { emitValue<output_TRML>(ctx, a.transferMl); emitValue<output_TRF>(ctx, 1); }
         if (a.doseChlorineMl > 0) { emitValue<output_CLML>(ctx, a.doseChlorineMl); emitValue<output_CHLR>(ctx, 1); }
         if (a.armExtend) emitValue<output_EXT>(ctx, 1);
         if (a.armRetract) emitValue<output_RET>(ctx, 1);
