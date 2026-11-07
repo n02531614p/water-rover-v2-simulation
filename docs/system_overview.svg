@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1090" width="1200" height="1090" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<defs>
+<marker id="e1f2933" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f2933"/></marker>
+<marker id="s1f2933" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f2933"/></marker>
+<marker id="e1f6fb2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f6fb2"/></marker>
+<marker id="s1f6fb2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f6fb2"/></marker>
+<marker id="e0f7c6c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f7c6c"/></marker>
+<marker id="s0f7c6c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f7c6c"/></marker>
+<marker id="ec0392b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/></marker>
+<marker id="sc0392b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/></marker>
+<marker id="e6b4fbb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b4fbb"/></marker>
+<marker id="s6b4fbb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b4fbb"/></marker>
+<marker id="eb7791f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b7791f"/></marker>
+<marker id="sb7791f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b7791f"/></marker>
+<marker id="e52606d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#52606d"/></marker>
+<marker id="s52606d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#52606d"/></marker>
+</defs>
+<rect width="1200" height="1090" fill="#ffffff"/>
+<text x="30" y="40" font-size="24" font-weight="bold" fill="#1f2933" text-anchor="start">Water Rover v2 (Waterdroid) — system overview</text>
+<text x="30" y="62" font-size="13" font-weight="normal" fill="#52606d" text-anchor="start">One ESP32 runs the whole rover · 400 mL tanks, 380 mL per trip · fixed route by dead reckoning · controlled from Node-RED over Wi-Fi</text>
+<rect x="20" y="80" width="1160" height="300" rx="14" fill="#f8fafc" stroke="#cbd2d9" stroke-width="1.2"/>
+<rect x="20" y="80" width="6" height="300" rx="3" fill="#1f6fb2"/>
+<text x="40" y="108" font-size="17" font-weight="bold" fill="#1f6fb2" text-anchor="start">A · Water path (one trip)</text>
+<rect x="45" y="122" width="120" height="112" rx="10" fill="#1f6fb214" stroke="#1f6fb2" stroke-width="1.6"/>
+<text x="105.0" y="144" font-size="13" font-weight="bold" fill="#1f6fb2" text-anchor="middle">River</text>
+<text x="105.0" y="164" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">coarse mesh</text>
+<text x="105.0" y="179" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">pre-filter on</text>
+<text x="105.0" y="194" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">the hose end</text>
+<rect x="185" y="122" width="120" height="112" rx="10" fill="#1f6fb214" stroke="#1f6fb2" stroke-width="1.6"/>
+<text x="245.0" y="144" font-size="13" font-weight="bold" fill="#1f6fb2" text-anchor="middle">Intake pump</text>
+<text x="245.0" y="164" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">relay CH1</text>
+<text x="245.0" y="179" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">on the servo boom</text>
+<text x="245.0" y="194" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">runs only at 45°</text>
+<line x1="166" y1="178.0" x2="183" y2="178.0" stroke="#1f6fb2" stroke-width="2" marker-end="url(#e1f6fb2)"/>
+<rect x="325" y="122" width="120" height="112" rx="10" fill="#1f6fb214" stroke="#1f6fb2" stroke-width="1.6"/>
+<text x="385.0" y="144" font-size="13" font-weight="bold" fill="#1f6fb2" text-anchor="middle">YF-S401 flow</text>
+<text x="385.0" y="164" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">counts the batch</text>
+<text x="385.0" y="179" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">(380 mL)</text>
+<text x="385.0" y="194" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">stops on dry run</text>
+<line x1="306" y1="178.0" x2="323" y2="178.0" stroke="#1f6fb2" stroke-width="2" marker-end="url(#e1f6fb2)"/>
+<rect x="465" y="122" width="120" height="112" rx="10" fill="#1f6fb214" stroke="#1f6fb2" stroke-width="1.6"/>
+<text x="525.0" y="144" font-size="13" font-weight="bold" fill="#1f6fb2" text-anchor="middle">Stage 1 tank</text>
+<text x="525.0" y="164" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">raw water</text>
+<text x="525.0" y="179" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">max 400 mL</text>
+<line x1="446" y1="178.0" x2="463" y2="178.0" stroke="#1f6fb2" stroke-width="2" marker-end="url(#e1f6fb2)"/>
+<rect x="605" y="122" width="120" height="112" rx="10" fill="#1f6fb214" stroke="#1f6fb2" stroke-width="1.6"/>
+<text x="665.0" y="144" font-size="13" font-weight="bold" fill="#1f6fb2" text-anchor="middle">Stage 2 column</text>
+<text x="665.0" y="164" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">gravel · sand</text>
+<text x="665.0" y="179" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">· charcoal</text>
+<text x="665.0" y="194" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">gravity, ~100 mL</text>
+<line x1="586" y1="178.0" x2="603" y2="178.0" stroke="#1f6fb2" stroke-width="2" marker-end="url(#e1f6fb2)"/>
+<rect x="745" y="122" width="120" height="112" rx="10" fill="#1f6fb214" stroke="#1f6fb2" stroke-width="1.6"/>
+<text x="805.0" y="144" font-size="13" font-weight="bold" fill="#1f6fb2" text-anchor="middle">Transfer pump</text>
+<text x="805.0" y="164" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">relay CH2</text>
+<text x="805.0" y="179" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">column → Stage 3</text>
+<text x="805.0" y="194" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">runs at ≥ 20 mL</text>
+<line x1="726" y1="178.0" x2="743" y2="178.0" stroke="#1f6fb2" stroke-width="2" marker-end="url(#e1f6fb2)"/>
+<rect x="885" y="122" width="120" height="112" rx="10" fill="#1f6fb214" stroke="#1f6fb2" stroke-width="1.6"/>
+<text x="945.0" y="144" font-size="13" font-weight="bold" fill="#1f6fb2" text-anchor="middle">Stage 3 tank</text>
+<text x="945.0" y="164" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">clean water</text>
+<text x="945.0" y="179" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">max 400 mL</text>
+<line x1="866" y1="178.0" x2="883" y2="178.0" stroke="#1f6fb2" stroke-width="2" marker-end="url(#e1f6fb2)"/>
+<rect x="1025" y="122" width="120" height="112" rx="10" fill="#1f6fb214" stroke="#1f6fb2" stroke-width="1.6"/>
+<text x="1085.0" y="144" font-size="13" font-weight="bold" fill="#1f6fb2" text-anchor="middle">Delivery pump</text>
+<text x="1085.0" y="164" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">relay CH4</text>
+<text x="1085.0" y="179" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">→ fixed nozzle</text>
+<text x="1085.0" y="194" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">→ container</text>
+<line x1="1006" y1="178.0" x2="1023" y2="178.0" stroke="#1f6fb2" stroke-width="2" marker-end="url(#e1f6fb2)"/>
+<rect x="179" y="262" width="132" height="74" rx="10" fill="#0f7c6c14" stroke="#0f7c6c" stroke-width="1.6"/>
+<text x="245.0" y="284" font-size="12" font-weight="bold" fill="#0f7c6c" text-anchor="middle">SG90 servo boom</text>
+<text x="245.0" y="304" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">0° raised (start)</text>
+<text x="245.0" y="319" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">45° in the water</text>
+<line x1="245.0" y1="262" x2="245.0" y2="236" stroke="#0f7c6c" stroke-width="2" marker-start="url(#s0f7c6c)" marker-end="url(#e0f7c6c)"/>
+<rect x="879" y="262" width="132" height="74" rx="10" fill="#1f6fb214" stroke="#1f6fb2" stroke-width="1.6"/>
+<text x="945.0" y="284" font-size="12" font-weight="bold" fill="#1f6fb2" text-anchor="middle">Chlorine pump</text>
+<text x="945.0" y="304" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">relay CH3 · 1:50 bleach</text>
+<text x="945.0" y="319" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">3 mL/L, 30 min contact</text>
+<line x1="945.0" y1="262" x2="945.0" y2="236" stroke="#1f6fb2" stroke-width="2" marker-end="url(#e1f6fb2)"/>
+<text x="595.0" y="300" font-size="12" font-weight="normal" fill="#52606d" text-anchor="middle">No level sensors: tank volumes are estimated from the flow sensor, pump run times and the</text>
+<text x="595.0" y="318" font-size="12" font-weight="normal" fill="#52606d" text-anchor="middle">gravity filter rate (VolumeModel). Bench test mode can run any pump for N seconds regardless.</text>
+<rect x="20" y="400" width="760" height="380" rx="14" fill="#f8fafc" stroke="#cbd2d9" stroke-width="1.2"/>
+<rect x="20" y="400" width="6" height="380" rx="3" fill="#0f7c6c"/>
+<text x="40" y="428" font-size="17" font-weight="bold" fill="#0f7c6c" text-anchor="start">B · Control and power (all on the 5 V rail, one common GND)</text>
+<rect x="270" y="450" width="230" height="220" rx="10" fill="#e6f4f1" stroke="#0f7c6c" stroke-width="1.6"/>
+<text x="385.0" y="472" font-size="15" font-weight="bold" fill="#0f7c6c" text-anchor="middle">ESP32 DevKit V1</text>
+<text x="385.0" y="492" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="middle">Mission state machine</text>
+<text x="385.0" y="508" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="middle">Fixed route (dead reckoning)</text>
+<text x="385.0" y="524" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="middle">Power sequencer +</text>
+<text x="385.0" y="540" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="middle">brownout guard</text>
+<text x="385.0" y="556" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="middle">Safety interlocks</text>
+<text x="385.0" y="572" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="middle">Bench test mode</text>
+<text x="385.0" y="588" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="middle">Wi-Fi + MQTT client</text>
+<rect x="40" y="460" width="190" height="70" rx="10" fill="#0f7c6c14" stroke="#0f7c6c" stroke-width="1.6"/>
+<text x="135.0" y="482" font-size="12" font-weight="bold" fill="#0f7c6c" text-anchor="middle">YF-S401 flow sensor</text>
+<text x="135.0" y="502" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">signal → GPIO34</text>
+<text x="135.0" y="517" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">via 10k / 20k divider</text>
+<line x1="230" y1="495" x2="268" y2="495" stroke="#0f7c6c" stroke-width="2" marker-end="url(#e0f7c6c)"/>
+<rect x="40" y="548" width="190" height="70" rx="10" fill="#0f7c6c14" stroke="#0f7c6c" stroke-width="1.6"/>
+<text x="135.0" y="570" font-size="12" font-weight="bold" fill="#0f7c6c" text-anchor="middle">Rail voltage sense</text>
+<text x="135.0" y="590" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">5 V rail → GPIO39 (VN)</text>
+<text x="135.0" y="605" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">via 10k / 10k divider</text>
+<line x1="230" y1="583" x2="268" y2="583" stroke="#0f7c6c" stroke-width="2" marker-end="url(#e0f7c6c)"/>
+<rect x="540" y="440" width="220" height="70" rx="10" fill="#0f7c6c14" stroke="#0f7c6c" stroke-width="1.6"/>
+<text x="650.0" y="462" font-size="12" font-weight="bold" fill="#0f7c6c" text-anchor="middle">Relay board A (2-ch)</text>
+<text x="650.0" y="482" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">CH1 intake  ← GPIO23</text>
+<text x="650.0" y="497" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">CH2 transfer ← GPIO19</text>
+<rect x="540" y="518" width="220" height="70" rx="10" fill="#0f7c6c14" stroke="#0f7c6c" stroke-width="1.6"/>
+<text x="650.0" y="540" font-size="12" font-weight="bold" fill="#0f7c6c" text-anchor="middle">Relay board B (2-ch)</text>
+<text x="650.0" y="560" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">CH3 chlorine ← GPIO18</text>
+<text x="650.0" y="575" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">CH4 delivery ← GPIO4</text>
+<rect x="540" y="596" width="220" height="52" rx="10" fill="#0f7c6c14" stroke="#0f7c6c" stroke-width="1.6"/>
+<text x="650.0" y="618" font-size="12" font-weight="bold" fill="#0f7c6c" text-anchor="middle">SG90 servo ← GPIO13</text>
+<text x="650.0" y="638" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">intake boom 0–45°</text>
+<rect x="540" y="656" width="220" height="70" rx="10" fill="#0f7c6c14" stroke="#0f7c6c" stroke-width="1.6"/>
+<text x="650.0" y="678" font-size="12" font-weight="bold" fill="#0f7c6c" text-anchor="middle">L298N → 4 × TT motors</text>
+<text x="650.0" y="698" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">ENA 14 · IN1-4 27/26/25/33</text>
+<text x="650.0" y="713" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">ENB 32 · skid steer</text>
+<line x1="502" y1="475" x2="538" y2="475" stroke="#0f7c6c" stroke-width="2" marker-end="url(#e0f7c6c)"/>
+<line x1="502" y1="553" x2="538" y2="553" stroke="#0f7c6c" stroke-width="2" marker-end="url(#e0f7c6c)"/>
+<line x1="502" y1="622" x2="538" y2="622" stroke="#0f7c6c" stroke-width="2" marker-end="url(#e0f7c6c)"/>
+<line x1="502" y1="658" x2="538" y2="691" stroke="#0f7c6c" stroke-width="2" marker-end="url(#e0f7c6c)"/>
+<rect x="40" y="700" width="460" height="64" rx="10" fill="#c0392b12" stroke="#c0392b" stroke-width="1.6"/>
+<text x="270" y="722" font-size="13" font-weight="bold" fill="#c0392b" text-anchor="middle">10,000 mAh power bank (two USB outputs)</text>
+<text x="270" y="740" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">USB-1 → ESP32 (laptop USB while flashing; VIN left empty)</text>
+<text x="270" y="756" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">USB-2 → 5 V rail → relays · pumps · servo · L298N · sensor</text>
+<line x1="385" y1="700" x2="385" y2="672" stroke="#c0392b" stroke-width="2" marker-end="url(#ec0392b)"/>
+<text x="540" y="742" font-size="11" font-weight="normal" fill="#52606d" text-anchor="start">Interlocks: one pump starts at a time;</text>
+<text x="540" y="756" font-size="11" font-weight="normal" fill="#52606d" text-anchor="start">wheels locked while a pump runs or</text>
+<text x="540" y="770" font-size="11" font-weight="normal" fill="#52606d" text-anchor="start">the intake is lowered; E-STOP stops all.</text>
+<rect x="800" y="400" width="380" height="380" rx="14" fill="#f8fafc" stroke="#cbd2d9" stroke-width="1.2"/>
+<rect x="800" y="400" width="6" height="380" rx="3" fill="#6b4fbb"/>
+<text x="820" y="428" font-size="17" font-weight="bold" fill="#6b4fbb" text-anchor="start">C · Network and software</text>
+<rect x="830" y="445" width="320" height="62" rx="10" fill="#6b4fbb14" stroke="#6b4fbb" stroke-width="1.6"/>
+<text x="990.0" y="467" font-size="13" font-weight="bold" fill="#6b4fbb" text-anchor="middle">Phone hotspot (2.4 GHz Wi-Fi)</text>
+<text x="990.0" y="487" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">ESP32 and laptop on the same network</text>
+<rect x="830" y="535" width="320" height="96" rx="10" fill="#6b4fbb14" stroke="#6b4fbb" stroke-width="1.6"/>
+<text x="990.0" y="557" font-size="13" font-weight="bold" fill="#6b4fbb" text-anchor="middle">Laptop</text>
+<text x="990.0" y="577" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">Mosquitto MQTT broker :1883</text>
+<text x="990.0" y="592" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">Node-RED dashboard :1880/ui</text>
+<text x="990.0" y="607" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">Mission · Water train · Intake &amp; Delivery</text>
+<text x="990.0" y="622" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">Drive &amp; Map · Power</text>
+<rect x="830" y="660" width="320" height="82" rx="10" fill="#6b4fbb14" stroke="#6b4fbb" stroke-width="1.6"/>
+<text x="990.0" y="682" font-size="13" font-weight="bold" fill="#6b4fbb" text-anchor="middle">ROS 2 Jazzy + Gazebo Harmonic</text>
+<text x="990.0" y="702" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">simulated rover, same mission</text>
+<text x="990.0" y="717" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">MQTT bridge → same dashboard</text>
+<text x="990.0" y="732" font-size="11" font-weight="normal" fill="#1f2933" text-anchor="middle">(mqtt:=true)</text>
+<line x1="990" y1="507" x2="990" y2="533" stroke="#6b4fbb" stroke-width="2" marker-start="url(#s6b4fbb)" marker-end="url(#e6b4fbb)"/>
+<line x1="990" y1="658" x2="990" y2="633" stroke="#6b4fbb" stroke-width="2" marker-end="url(#e6b4fbb)"/>
+<line x1="782" y1="476" x2="828" y2="476" stroke="#6b4fbb" stroke-width="2" marker-start="url(#s6b4fbb)" marker-end="url(#e6b4fbb)"/>
+<text x="990" y="764" font-size="10" font-weight="normal" fill="#52606d" text-anchor="middle">MQTT topics: rover/telemetry · estop · mission/cmd · test/cmd …</text>
+<rect x="20" y="800" width="1160" height="270" rx="14" fill="#f8fafc" stroke="#cbd2d9" stroke-width="1.2"/>
+<rect x="20" y="800" width="6" height="270" rx="3" fill="#b7791f"/>
+<text x="40" y="828" font-size="17" font-weight="bold" fill="#b7791f" text-anchor="start">D · Mission cycle (fixed route, metres from the depot)</text>
+<rect x="75" y="867.8" width="337.2" height="190.2" rx="8" fill="#fffaf0" stroke="#cbd2d9"/>
+<rect x="376.2" y="890.2" width="22" height="149.6" fill="#1f6fb233"/>
+<text x="387.2" y="886.2" font-size="11" font-weight="normal" fill="#1f6fb2" text-anchor="middle">river</text>
+<polyline points="161.0,965.0 372.2,965.0 359.0,965.0 293.0,899.0 293.0,1031.0 95.0,1042.0 161.0,965.0" fill="none" stroke="#b7791f" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="161.0" cy="965.0" r="6" fill="#1f2933"/>
+<text x="161" y="955" font-size="11" font-weight="bold" fill="#1f2933" text-anchor="middle">depot</text>
+<circle cx="372.2" cy="965.0" r="6" fill="#b7791f"/>
+<circle cx="293.0" cy="899.0" r="6" fill="#b7791f"/>
+<text x="293" y="889" font-size="11" font-weight="bold" fill="#1f2933" text-anchor="middle">H1</text>
+<circle cx="293.0" cy="1031.0" r="6" fill="#b7791f"/>
+<text x="293" y="1051" font-size="11" font-weight="bold" fill="#1f2933" text-anchor="middle">H2</text>
+<circle cx="95.0" cy="1042.0" r="6" fill="#b7791f"/>
+<text x="95" y="1062.0" font-size="11" font-weight="bold" fill="#1f2933" text-anchor="middle">H3</text>
+<rect x="466" y="838" width="228" height="40" rx="8" fill="#b7791f14" stroke="#b7791f" stroke-width="1.2"/>
+<circle cx="484" cy="858.0" r="11" fill="#b7791f"/>
+<text x="484" y="862.0" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+<text x="502" y="862.0" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">Start at the depot, facing river</text>
+<rect x="706" y="838" width="228" height="40" rx="8" fill="#b7791f14" stroke="#b7791f" stroke-width="1.2"/>
+<circle cx="724" cy="858.0" r="11" fill="#b7791f"/>
+<text x="724" y="862.0" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+<text x="742" y="862.0" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">Drive 9.6 m to the river</text>
+<rect x="946" y="838" width="228" height="40" rx="8" fill="#b7791f14" stroke="#b7791f" stroke-width="1.2"/>
+<circle cx="964" cy="858.0" r="11" fill="#b7791f"/>
+<text x="964" y="862.0" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+<text x="982" y="862.0" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">Servo lowers intake to 45°</text>
+<rect x="466" y="890" width="228" height="40" rx="8" fill="#b7791f14" stroke="#b7791f" stroke-width="1.2"/>
+<circle cx="484" cy="910.0" r="11" fill="#b7791f"/>
+<text x="484" y="914.0" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+<text x="502" y="914.0" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">Pump 380 mL (flow sensor)</text>
+<rect x="706" y="890" width="228" height="40" rx="8" fill="#b7791f14" stroke="#b7791f" stroke-width="1.2"/>
+<circle cx="724" cy="910.0" r="11" fill="#b7791f"/>
+<text x="724" y="914.0" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+<text x="742" y="914.0" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">Raise intake, back off 0.6 m</text>
+<rect x="946" y="890" width="228" height="40" rx="8" fill="#b7791f14" stroke="#b7791f" stroke-width="1.2"/>
+<circle cx="964" cy="910.0" r="11" fill="#b7791f"/>
+<text x="964" y="914.0" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+<text x="982" y="914.0" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">Filter, transfer to Stage 3</text>
+<rect x="466" y="942" width="228" height="40" rx="8" fill="#b7791f14" stroke="#b7791f" stroke-width="1.2"/>
+<circle cx="484" cy="962.0" r="11" fill="#b7791f"/>
+<text x="484" y="966.0" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+<text x="502" y="966.0" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">Chlorinate, 30 min contact</text>
+<rect x="706" y="942" width="228" height="40" rx="8" fill="#b7791f14" stroke="#b7791f" stroke-width="1.2"/>
+<circle cx="724" cy="962.0" r="11" fill="#b7791f"/>
+<text x="724" y="966.0" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+<text x="742" y="966.0" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">Deliver at H1 → H2 → H3</text>
+<rect x="946" y="942" width="228" height="40" rx="8" fill="#b7791f14" stroke="#b7791f" stroke-width="1.2"/>
+<circle cx="964" cy="962.0" r="11" fill="#b7791f"/>
+<text x="964" y="966.0" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">9</text>
+<text x="982" y="966.0" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">Return to the depot</text>
+<text x="470" y="1010" font-size="12" font-weight="normal" fill="#52606d" text-anchor="start">Position is estimated from drive and turn times (calibrate NAV_SPEED_MPS / NAV_TURN_DPS). Press “Arrived”</text>
+<text x="470" y="1027" font-size="12" font-weight="normal" fill="#52606d" text-anchor="start">on the dashboard to snap the estimate back if the rover is off; a compass (QMC5883L) removes most drift.</text>
+<text x="470" y="1051" font-size="12" font-weight="bold" fill="#b7791f" text-anchor="start">Safety: E-STOP on every dashboard page · brownout guard sheds pumps · pumps and wheels never run together.</text>
+</svg>

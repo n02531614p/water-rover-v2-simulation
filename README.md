@@ -4,7 +4,13 @@ A 4WD rover that drives to a river, pumps raw water through a coarse pre-filter 
 gravity-filters it through the Stage 2 column, pumps it into the Stage 3 delivery tank, chlorinates it, then drives to each homestead
 and dispenses clean water through a fixed nozzle. An SG90 servo lowers the intake into the river and raises it before driving.
 
+![System overview: water path, control and power, network, mission cycle](docs/system_overview.svg)
+
+<details><summary>Original design drawing</summary>
+
 ![rover](docs/rover_design.jpeg)
+
+</details>
 
 | Folder | What | Start here |
 |--------|------|-----------|
@@ -16,7 +22,7 @@ and dispenses clean water through a fixed nozzle. An SG90 servo lowers the intak
 | `node-red/` | central SCADA dashboard (#12), builders and validator | import `node-red/waterdroid_dashboard.json` |
 | `*.json`, `*.ino` (root) | team members' subsystem flows and bench-test sketches | see `docs/ISSUES.md` |
 | `webots/` | earlier Webots prototype | — |
-| `docs/` | `HARDWARE.md` (parts, pin map, wiring), `TOPICS.md` (MQTT + ROS topics), `ISSUES.md` (issue checklist), `wiring/` (wiring diagrams) | open `docs/wiring/*.svg` |
+| `docs/` | `system_overview.svg` (this diagram, built by `diagrams/build_overview.py`), `HARDWARE.md` (parts, pin map, wiring), `TOPICS.md` (MQTT + ROS topics), `FLASHING.md`, `ISSUES.md`, `wiring/` (wiring diagrams) | open `docs/wiring/*.svg` |
 
 ## Simulation (Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic)
 
@@ -53,11 +59,14 @@ ros2 topic pub --once /waterdroid/estop std_msgs/Bool "data: true"
 4. Run Mosquitto + Node-RED (with `node-red-dashboard`), import `node-red/waterdroid_dashboard.json`.
 5. Measure your route into `DEFAULT_ROUTE` and calibrate (docs/HARDWARE.md). Dashboard → Mission → **Start mission**; press **Arrived: river / homestead** at a
    stop only if the estimate drifts — the rover follows the fixed route on its own. **EMERGENCY STOP** is on every page.
+6. Bench test any pump for a set time over MQTT: publish `intake 10`, `transfer 5`, `chlorine 3` or `delivery 5`
+   (seconds, max 30) to `rover/test/cmd`, or type `test intake 10` in the Serial Monitor. E-STOP and the
+   interlocks still apply.
 
 ## Checks
 
 ```bash
-bash firmware/tests/run_tests.sh            # 330 unit checks + sketch compile checks
+bash firmware/tests/run_tests.sh            # 393 unit checks + sketch compile checks
 bash power-management/power-management/tests/run_tests.sh
 python3 xod/waterdroid/check_xod.py         # XOD nodes compile
 python3 node-red/validate_flows.py          # all flows: ids, wires, groups, JS syntax
